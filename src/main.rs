@@ -59,9 +59,9 @@ fn main() {
     let sprite_size_padded = (sprite_size.0 + 2, sprite_size.1 + 2);
 
     for y in 0..HEIGHT / sprite_size_padded.1 {
-        for x in 0..WIDTH / sprite_size_padded.0 {
+        for x in 0..WIDTH / 2 / sprite_size_padded.0 {
             let buf = BlitBuffer::from_u32(&gen_sprite(&mask, 6, options), sprite_size.0 as i32, 0xFFFFFFFF);
-            let pos = ((x * sprite_size_padded.0) as i32, (y * sprite_size_padded.1) as i32);
+            let pos = ((x * sprite_size_padded.0 + WIDTH / 2) as i32, (y * sprite_size_padded.1) as i32);
             buf.blit(&mut buffer, (WIDTH as i32, HEIGHT as i32), pos);
         }
     }

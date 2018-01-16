@@ -96,10 +96,6 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
         return result;
     }
-    //TODO implement mirrorring
 
-    mask.iter().map(|&v| match v {
-        -1 => 0,
-        _ => 0xFFFFFFFF
-    }).collect()
+    unimplemented!();
 }
