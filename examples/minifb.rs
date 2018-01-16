@@ -15,7 +15,7 @@ fn main() {
         scale: Scale::X2,
         ..WindowOptions::default()
     };
-    let mut window = Window::new("sprite-gen editor - ESC to exit", WIDTH, HEIGHT, options).expect("Unable to open window");
+    let mut window = Window::new("sprite-gen example - ESC to exit", WIDTH, HEIGHT, options).expect("Unable to open window");
 
     let mask = [
         0, 0, 0, 0, 0, 0,
