@@ -35,7 +35,7 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
     // Copy the array to this vector
     let mut mask: Vec<i8> = mask_buffer.iter().cloned().collect();
 
-    let mut rng = XorShiftRng::new_unseeded();
+    let mut rng: XorShiftRng = rand::thread_rng().gen();
 
     // Generate a random sample, if it's a internal body there is a 50% chance it will be empty. If it's a regular body there is a 50% chance it will turn into a border
     for val in mask.iter_mut() {
@@ -43,6 +43,7 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
             // Either 0 or 1
             *val = rng.next_f32().round() as i8;
         } else if *val == 2 {
+            // Either -1 or 1
             *val = (rng.next_f32().round() as i8) * 2 - 1;
         }
     }
@@ -55,16 +56,16 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
                 continue;
             }
 
-            if y - 1 >= 0 && mask[index - mask_width] == 0 {
+            if y > 0 && mask[index - mask_width] == 0 {
                 mask[index - mask_width] = -1;
             }
-            if y + 1 < mask_height && mask[index + mask_width] == 0 {
+            if y < mask_height - 1 && mask[index + mask_width] == 0 {
                 mask[index + mask_width] = -1;
             }
-            if x - 1 >= 0 && mask[index - 1] == 0 {
+            if x > 0 && mask[index - 1] == 0 {
                 mask[index - 1] = -1;
             }
-            if x + 1 < mask_width && mask[index + 1] == 0 {
+            if x < mask_width - 1 && mask[index + 1] == 0 {
                 mask[index + 1] = -1;
             }
         }
@@ -76,6 +77,24 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
             -1 => 0,
             _ => 0xFFFFFFFF
         }).collect();
+    } else if options.mirror_x && !options.mirror_y {
+        let width = mask_width * 2;
+        let mut result = vec![0; width * mask_height];
+
+        for y in 0..mask_height {
+            for x in 0..mask_width {
+                let value = match mask[x + y * mask_width] {
+                    -1 => 0,
+                    _ => 0xFFFFFFFF
+                };
+                let index = x + y * width;
+                result[index] = value;
+                let index = (width - x - 1) + y * width;
+                result[index] = value;
+            }
+        }
+
+        return result;
     }
     //TODO implement mirrorring
 
@@ -83,12 +102,4 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
         -1 => 0,
         _ => 0xFFFFFFFF
     }).collect()
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }
