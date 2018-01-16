@@ -1,12 +1,13 @@
 [package]
-name = "sprite"
+name = "sprite-gen"
 version = "0.1.0"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 license = "GPL-3.0"
 homepage = "https://github.com/tversteeg/sprite-gen"
 
 readme = "README.md"
-description = "Procedurally generate pixel sprites and save them in different formats"
+description = "Procedurally generate pixel sprites library"
+documentation = "https://docs.rs/sprite-gen"
 
 repository = "https://github.com/tversteeg/sprite-gen.git"
 keywords = ["gamedev", "sprite", "procedural", "procgen"]
@@ -15,18 +16,5 @@ categories = ["games", "rendering", "game-engines"]
 [badges]
 travis-ci = {repository = "tversteeg/sprite-gen"}
 
-[workspace]
-
 [dependencies]
-sprite-gen = { path = "lib" }
-blit = "0.3"
-minifb = "0.10"
-
-[[example]]
-name = "minifb"
-path = "examples/minifb.rs"
-
-[dev-dependencies]
-sprite-gen = { path = "lib" }
-blit = "0.3"
-minifb = "0.10"
+rand = "0.4"
