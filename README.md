@@ -10,6 +10,10 @@ On Linux you need the `xorg-dev` package as required by `minifb` -- `sudo apt in
 
     cargo run --release
 
+This should produce the following window:
+
+![Sprite](img/sprite.png?raw=true)
+
 # sprite-gen (Library)
 
 A Rust library for procedurally generating 2D sprites. Port of https://github.com/zfedoran/pixel-sprite-generator

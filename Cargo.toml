@@ -1,6 +1,6 @@
 [package]
 name = "sprite"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 license = "GPL-3.0"
 homepage = "https://github.com/tversteeg/sprite-gen"
@@ -21,6 +21,7 @@ travis-ci = {repository = "tversteeg/sprite-gen"}
 sprite-gen = { path = "lib", version = "0" }
 blit = "0.3"
 minifb = "0.10"
+direct-gui = "0.1"
 
 [[example]]
 name = "minifb"
