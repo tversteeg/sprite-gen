@@ -43,9 +43,9 @@ fn main() {
         for x in 0..WIDTH / sprite_size_padded.0 {
             // Generate the sprite and add it as a blitbuffer so it can be rendered easily on the
             // output buffer
-            let buf = BlitBuffer::from_u32(&gen_sprite(&mask, 6, options), sprite_size.0 as i32, 0xFFFFFFFF);
+            let buf = BlitBuffer::from_buffer(&gen_sprite(&mask, 6, options), sprite_size.0 as i32, Color::from_u32(0xFFFFFFFF));
             let pos = ((x * sprite_size_padded.0) as i32, (y * sprite_size_padded.1) as i32);
-            buf.blit(&mut buffer, (WIDTH as i32, HEIGHT as i32), pos);
+            buf.blit(&mut buffer, WIDTH, pos);
         }
     }
 
