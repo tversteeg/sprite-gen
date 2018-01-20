@@ -14,6 +14,11 @@ const HEIGHT: usize = 300;
 
 const GRID_SQUARE_SIZE: usize = 12;
 
+const COLOR_ALWAYS_SOLID: u32 = 0x666666;
+const COLOR_ALWAYS_EMPTY: u32 = 0xFAFAFA;
+const COLOR_BODY: u32 = 0xFF6666;
+const COLOR_BODY2: u32 = 0x6666FF;
+
 fn draw_grid(mask: &[i8], mask_width: usize, buffer: &mut Vec<u32>, pos: (usize, usize), size: (usize, usize)) {
     let width = size.0 * GRID_SQUARE_SIZE;
     let height = size.1 * GRID_SQUARE_SIZE;
@@ -29,13 +34,35 @@ fn draw_grid(mask: &[i8], mask_width: usize, buffer: &mut Vec<u32>, pos: (usize,
 
                 let mask_index = mask_x + mask_y * mask_width;
                 buffer[index] = match mask[mask_index] {
-                    -1 => 0x666666,
-                    0 => 0xFAFAFA,
-                    1 => 0xFF6666,
-                    2 => 0x6666FF,
+                    -1 => COLOR_ALWAYS_SOLID,
+                    0 => COLOR_ALWAYS_EMPTY,
+                    1 => COLOR_BODY,
+                    2 => COLOR_BODY2,
                     _ => unreachable!()
                 };
             }
+        }
+    }
+}
+
+fn redraw(mask: &[i8], mut buffer: &mut Vec<u32>) {
+    for mut pixel in buffer.iter_mut() {
+        *pixel = 0xFFFFFF;
+    }
+
+    let options = Options {
+        mirror_x: true,
+        ..Options::default()
+    };
+
+    let sprite_size = (12, 12);
+    let sprite_size_padded = (sprite_size.0 + 2, sprite_size.1 + 2);
+
+    for y in 0..HEIGHT / sprite_size_padded.1 {
+        for x in 0..WIDTH / 2 / sprite_size_padded.0 {
+            let buf = BlitBuffer::from_buffer(&gen_sprite(mask, 6, options), sprite_size.0 as i32, Color::from_u32(0xFFFFFF));
+            let pos = ((x * sprite_size_padded.0 + WIDTH / 2) as i32, (y * sprite_size_padded.1) as i32);
+            buf.blit(&mut buffer, WIDTH, pos);
         }
     }
 }
@@ -45,13 +72,7 @@ fn main() {
 
     let mut buffer: Vec<u32> = vec![0x00FFFFFF; WIDTH * HEIGHT];
 
-    let options = WindowOptions {
-        scale: Scale::X2,
-        ..WindowOptions::default()
-    };
-    let mut window = Window::new("Sprite - ESC to exit", WIDTH, HEIGHT, options).expect("Unable to open window");
-
-    let mask = [
+    let mut mask = [
         0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 1, 1,
         0, 0, 0, 0, 1,-1,
@@ -65,29 +86,21 @@ fn main() {
         0, 0, 0, 1, 1, 1,
         0, 0, 0, 0, 0, 0];
 
-    let options = Options {
-        mirror_x: true,
-        ..Options::default()
+    let options = WindowOptions {
+        scale: Scale::X2,
+        ..WindowOptions::default()
     };
-
-    let sprite_size = (12, 12);
-    let sprite_size_padded = (sprite_size.0 + 2, sprite_size.1 + 2);
-
-    for y in 0..HEIGHT / sprite_size_padded.1 {
-        for x in 0..WIDTH / 2 / sprite_size_padded.0 {
-            let buf = BlitBuffer::from_buffer(&gen_sprite(&mask, 6, options), sprite_size.0 as i32, Color::from_u32(0xFFFFFF));
-            let pos = ((x * sprite_size_padded.0 + WIDTH / 2) as i32, (y * sprite_size_padded.1) as i32);
-            buf.blit(&mut buffer, WIDTH, pos);
-        }
-    }
+    let mut window = Window::new("Sprite - ESC to exit", WIDTH, HEIGHT, options).expect("Unable to open window");
 
     let mut gui = Gui::new(screen_size);
 
-    let always_draw_button = gui.load_sprite_from_file("assets/always-solid-button.png", 0xFF00FF).unwrap();
+    // The color selection buttons
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_EMPTY)).with_pos(4, 4));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_SOLID)).with_pos(4, 16));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY)).with_pos(4, 28));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY2)).with_pos(4, 40));
 
-    gui.register(Button::new(always_draw_button).pos(4, 4));
-
-    draw_grid(&mask, 6, &mut buffer, (100, 4), (6, 12));
+    redraw(&mask, &mut buffer);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let mut cs = ControlState {
@@ -100,7 +113,14 @@ fn main() {
         });
 
         gui.update(&cs);
+
+        if window.is_key_down(Key::Space) {
+            redraw(&mask, &mut buffer);
+        }
+
         gui.draw_to_buffer(&mut buffer);
+
+        draw_grid(&mask, 6, &mut buffer, (30, 4), (6, 12));
 
         window.update_with_buffer(&buffer).unwrap();
     }
