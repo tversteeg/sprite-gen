@@ -53,20 +53,23 @@ fn change_color_body2<S>(_: &mut Button<S>, state: ButtonState) {
     }
 }
 
-fn set_pixel(mask: &mut [i8], mask_width: usize, mouse: (i32, i32), pos: (usize, usize), size: (usize, usize)) {
+fn set_pixel(mask: &mut [i8], mask_width: usize, mouse: (i32, i32), pos: (usize, usize), size: (usize, usize)) -> bool {
     let width = size.0 * GRID_SQUARE_SIZE;
     let height = size.1 * GRID_SQUARE_SIZE;
 
     let conv_mouse = (mouse.0 - pos.0 as i32, mouse.1 - pos.1 as i32);
     if conv_mouse.0 < 0 || conv_mouse.0 >= width as i32 || conv_mouse.1 < 0 || conv_mouse.1 >= height as i32 {
-        return;
+        return false;
     }
 
     let x = conv_mouse.0 as usize / GRID_SQUARE_SIZE;
     let y = conv_mouse.1 as usize / GRID_SQUARE_SIZE;
 
     unsafe {
+        let old = mask[x + y * mask_width];
         mask[x + y * mask_width] = CURRENT_COLOR;
+
+        return old != CURRENT_COLOR;
     }
 }
 
@@ -153,24 +156,31 @@ fn main() {
 
     redraw(&mask, &mut buffer);
 
+    let mut redraw_all: bool = false;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let mut cs = ControlState {
             ..ControlState::default()
         };
 
+        if window.is_key_down(Key::Space) {
+            redraw_all = true;
+        }
         window.get_mouse_pos(MouseMode::Pass).map(|mouse| {
             cs.mouse_pos = (mouse.0 as i32, mouse.1 as i32);
             cs.mouse_down = window.get_mouse_down(MouseButton::Left);
 
             if window.get_mouse_down(MouseButton::Left) {
-                set_pixel(&mut mask, 6, cs.mouse_pos, (30, 4), (6, 12));
+                if set_pixel(&mut mask, 6, cs.mouse_pos, (30, 4), (6, 12)) {
+                    redraw_all = true;
+                }
             }
         });
 
         gui.update(&cs);
 
-        if window.is_key_down(Key::Space) {
+        if redraw_all {
             redraw(&mask, &mut buffer);
+            redraw_all = false;
         }
 
         gui.draw_to_buffer(&mut buffer);
