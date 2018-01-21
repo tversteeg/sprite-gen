@@ -19,6 +19,57 @@ const COLOR_ALWAYS_EMPTY: u32 = 0xFAFAFA;
 const COLOR_BODY: u32 = 0xFF6666;
 const COLOR_BODY2: u32 = 0x6666FF;
 
+static mut CURRENT_COLOR: i8 = -1;
+
+fn change_color_always_solid<S>(_: &mut Button<S>, state: ButtonState) {
+    if state == ButtonState::Pressed {
+        unsafe {
+            CURRENT_COLOR = -1;
+        }
+    }
+}
+
+fn change_color_always_empty<S>(_: &mut Button<S>, state: ButtonState) {
+    if state == ButtonState::Pressed {
+        unsafe {
+            CURRENT_COLOR = 0;
+        }
+    }
+}
+
+fn change_color_body<S>(_: &mut Button<S>, state: ButtonState) {
+    if state == ButtonState::Pressed {
+        unsafe {
+            CURRENT_COLOR = 1;
+        }
+    }
+}
+
+fn change_color_body2<S>(_: &mut Button<S>, state: ButtonState) {
+    if state == ButtonState::Pressed {
+        unsafe {
+            CURRENT_COLOR = 2;
+        }
+    }
+}
+
+fn set_pixel(mask: &mut [i8], mask_width: usize, mouse: (i32, i32), pos: (usize, usize), size: (usize, usize)) {
+    let width = size.0 * GRID_SQUARE_SIZE;
+    let height = size.1 * GRID_SQUARE_SIZE;
+
+    let conv_mouse = (mouse.0 - pos.0 as i32, mouse.1 - pos.1 as i32);
+    if conv_mouse.0 < 0 || conv_mouse.0 >= width as i32 || conv_mouse.1 < 0 || conv_mouse.1 >= height as i32 {
+        return;
+    }
+
+    let x = conv_mouse.0 as usize / GRID_SQUARE_SIZE;
+    let y = conv_mouse.1 as usize / GRID_SQUARE_SIZE;
+
+    unsafe {
+        mask[x + y * mask_width] = CURRENT_COLOR;
+    }
+}
+
 fn draw_grid(mask: &[i8], mask_width: usize, buffer: &mut Vec<u32>, pos: (usize, usize), size: (usize, usize)) {
     let width = size.0 * GRID_SQUARE_SIZE;
     let height = size.1 * GRID_SQUARE_SIZE;
@@ -95,10 +146,10 @@ fn main() {
     let mut gui = Gui::new(screen_size);
 
     // The color selection buttons
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_EMPTY)).with_pos(4, 4));
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_SOLID)).with_pos(4, 16));
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY)).with_pos(4, 28));
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY2)).with_pos(4, 40));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_EMPTY)).with_pos(4, 4).with_callback(change_color_always_empty));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_SOLID)).with_pos(4, 16).with_callback(change_color_always_solid));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY)).with_pos(4, 28).with_callback(change_color_body));
+    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY2)).with_pos(4, 40).with_callback(change_color_body2));
 
     redraw(&mask, &mut buffer);
 
@@ -110,6 +161,10 @@ fn main() {
         window.get_mouse_pos(MouseMode::Pass).map(|mouse| {
             cs.mouse_pos = (mouse.0 as i32, mouse.1 as i32);
             cs.mouse_down = window.get_mouse_down(MouseButton::Left);
+
+            if window.get_mouse_down(MouseButton::Left) {
+                set_pixel(&mut mask, 6, cs.mouse_pos, (30, 4), (6, 12));
+            }
         });
 
         gui.update(&cs);
