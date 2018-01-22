@@ -33,17 +33,25 @@ fn main() {
 
     let options = Options {
         mirror_x: true,
+        mirror_y: true,
         ..Options::default()
     };
 
-    let sprite_size = (12, 12);
+    let mask_size = (6, 12);
+    let mut sprite_size = (mask_size.0, mask_size.1);
+    if options.mirror_x {
+        sprite_size.0 *= 2;
+    }
+    if options.mirror_y {
+        sprite_size.1 *= 2;
+    }
     let sprite_size_padded = (sprite_size.0 + 2, sprite_size.1 + 2);
 
     for y in 0..HEIGHT / sprite_size_padded.1 {
         for x in 0..WIDTH / sprite_size_padded.0 {
             // Generate the sprite and add it as a blitbuffer so it can be rendered easily on the
             // output buffer
-            let buf = BlitBuffer::from_buffer(&gen_sprite(&mask, 6, options), sprite_size.0 as i32, Color::from_u32(0xFFFFFFFF));
+            let buf = BlitBuffer::from_buffer(&gen_sprite(&mask, mask_size.0, options), sprite_size.0 as i32, Color::from_u32(0xFFFFFFFF));
             let pos = ((x * sprite_size_padded.0) as i32, (y * sprite_size_padded.1) as i32);
             buf.blit(&mut buffer, WIDTH, pos);
         }

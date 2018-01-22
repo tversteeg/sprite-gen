@@ -73,11 +73,13 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
     // Convert the data to pixels
     if !options.mirror_x && !options.mirror_y {
+        // No mirror
         return mask.iter().map(|&v| match v {
             -1 => 0,
             _ => 0xFFFFFFFF
         }).collect();
     } else if options.mirror_x && !options.mirror_y {
+        // Only mirror X
         let width = mask_width * 2;
         let mut result = vec![0; width * mask_height];
 
@@ -95,7 +97,48 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
         }
 
         return result;
-    }
+    } else if options.mirror_y && !options.mirror_x {
+        // Only mirror Y
+        let height = mask_height * 2;
+        let mut result = vec![0; mask_width * height];
 
-    unimplemented!();
+        for y in 0..mask_height {
+            for x in 0..mask_width {
+                let value = match mask[x + y * mask_width] {
+                    -1 => 0,
+                    _ => 0xFFFFFFFF
+                };
+                let index = x + y * mask_width;
+                result[index] = value;
+                let index = x + (height - y - 1) * mask_width;
+                result[index] = value;
+            }
+        }
+
+        return result;
+    } else {
+        // Mirror both X & Y
+        let width = mask_width * 2;
+        let height = mask_height * 2;
+        let mut result = vec![0; width * height];
+
+        for y in 0..mask_height {
+            for x in 0..mask_width {
+                let value = match mask[x + y * mask_width] {
+                    -1 => 0,
+                    _ => 0xFFFFFFFF
+                };
+                let index = x + y * width;
+                result[index] = value;
+                let index = (width - x - 1) + y * width;
+                result[index] = value;
+                let index = x + (height - y - 1) * width;
+                result[index] = value;
+                let index = (width - x - 1) + (height - y - 1) * width;
+                result[index] = value;
+            }
+        }
+
+        return result;
+    }
 }
