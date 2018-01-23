@@ -1,6 +1,6 @@
 [package]
 name = "sprite"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 license = "GPL-3.0"
 homepage = "https://github.com/tversteeg/sprite-gen"
