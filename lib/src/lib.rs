@@ -4,10 +4,14 @@ extern crate rand;
 
 use rand::{Rng, XorShiftRng};
 
+/// The options for the `gen_sprite` function.
 #[derive(Copy, Clone)]
 pub struct Options {
+    /// `true` if the result buffer should be mirrored along the X axis.
     pub mirror_x: bool,
+    /// `true` if the result buffer should be mirrored along the Y axis.
     pub mirror_y: bool,
+    /// `true` if the output should be colored. `false` if the output should be 1-bit.
     pub colored: bool,
     pub edge_brightness: f64,
     pub color_variations: f64,
@@ -29,6 +33,15 @@ impl Default for Options {
     }
 }
 
+/// Randomly generate a new sprite.
+///
+/// A mask buffer of `i8` values should be passed together with the width of that buffer.
+/// The height is automatically calculated by dividing the size of the buffer with the width.
+/// The `i8` values should be one of the following, and will generate a bitmap:
+/// - `-1`: This pixel will always be solid.
+/// - `0`: This pixel will always be empty.
+/// - `1`: This pixel will either be empty or filled.
+/// - `2`: This pixel will either be filled or it's neighbor will be.
 pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Vec<u32> {
     let mask_height = mask_buffer.len() / mask_width;
 
