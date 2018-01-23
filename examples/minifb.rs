@@ -28,12 +28,13 @@ fn main() {
         0, 1, 1, 1, 2, 2,
         0, 1, 1, 1, 2, 2,
         0, 1, 1, 1, 1,-1,
-        0, 0, 0, 1, 1, 1,
-        0, 0, 0, 0, 0, 0];
+        0, 1, 1, 1, 1, 1,
+        0, 0, 1, 1, 1, 1];
 
     let options = Options {
         mirror_x: true,
         mirror_y: true,
+        colored: false,
         ..Options::default()
     };
 

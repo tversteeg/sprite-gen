@@ -182,8 +182,8 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 #[inline]
 fn onebit_output(mask: &[i8]) -> Vec<u32> {
     mask.iter().map(|&v| match v {
-        0 => 0xFFFFFFFF,
-        _ => 0
+        -1 => 0,
+        _ => 0xFFFFFFFF
     }).collect()
 }
 
