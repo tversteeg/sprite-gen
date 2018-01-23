@@ -13,13 +13,24 @@ pub struct Options {
     pub mirror_y: bool,
     /// `true` if the output should be colored. `false` if the output should be 1-bit.
     pub colored: bool,
+    /// A value from `0.0` - `1.0`.
     pub edge_brightness: f64,
+    /// A value from `0.0` - `1.0`.
     pub color_variations: f64,
+    /// A value from `0.0` - `1.0`.
     pub brightness_noise: f64,
+    /// A value from `0.0` - `1.0`.
     pub saturation: f64
 }
 
 impl Default for Options {
+    /// - `mirror_x`: `false`
+    /// - `mirror_y`: `false`
+    /// - `colored`: `true`
+    /// - `edge_brightness`: `0.3`
+    /// - `color_variations`: `0.2`
+    /// - `brightness_noise`: `0.3`
+    /// - `saturation`: `0.5`
     fn default() -> Self {
         Options {
             mirror_x: false,
@@ -38,10 +49,17 @@ impl Default for Options {
 /// A mask buffer of `i8` values should be passed together with the width of that buffer.
 /// The height is automatically calculated by dividing the size of the buffer with the width.
 /// The `i8` values should be one of the following, and will generate a bitmap:
-/// - `-1`: This pixel will always be solid.
+/// - `-1`: This pixel will always be a border.
 /// - `0`: This pixel will always be empty.
-/// - `1`: This pixel will either be empty or filled.
-/// - `2`: This pixel will either be filled or it's neighbor will be.
+/// - `1`: This pixel will either be empty or filled (body).
+/// - `2`: This pixel will either be a border or filled (body).
+///
+/// ```
+/// use sprite_gen::{gen_sprite, Options};
+///
+/// let mask = vec![1i8; 12 * 12];
+/// let buffer = gen_sprite(&mask, 12, Options::default());
+/// ```
 pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Vec<u32> {
     let mask_height = mask_buffer.len() / mask_width;
 
@@ -87,10 +105,7 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
     // Convert the data to pixels
     if !options.mirror_x && !options.mirror_y {
         // No mirror
-        return mask.iter().map(|&v| match v {
-            -1 => 0,
-            _ => 0xFFFFFFFF
-        }).collect();
+        return mask.iter().map(|&v| color_output(v, &options, &rng)).collect();
     } else if options.mirror_x && !options.mirror_y {
         // Only mirror X
         let width = mask_width * 2;
@@ -98,10 +113,8 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
         for y in 0..mask_height {
             for x in 0..mask_width {
-                let value = match mask[x + y * mask_width] {
-                    -1 => 0,
-                    _ => 0xFFFFFFFF
-                };
+                let value = color_output(mask[x + y * mask_width], &options, &rng);
+
                 let index = x + y * width;
                 result[index] = value;
                 let index = (width - x - 1) + y * width;
@@ -117,10 +130,8 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
         for y in 0..mask_height {
             for x in 0..mask_width {
-                let value = match mask[x + y * mask_width] {
-                    -1 => 0,
-                    _ => 0xFFFFFFFF
-                };
+                let value = color_output(mask[x + y * mask_width], &options, &rng);
+
                 let index = x + y * mask_width;
                 result[index] = value;
                 let index = x + (height - y - 1) * mask_width;
@@ -137,10 +148,8 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
         for y in 0..mask_height {
             for x in 0..mask_width {
-                let value = match mask[x + y * mask_width] {
-                    -1 => 0,
-                    _ => 0xFFFFFFFF
-                };
+                let value = color_output(mask[x + y * mask_width], &options, &rng);
+
                 let index = x + y * width;
                 result[index] = value;
                 let index = (width - x - 1) + y * width;
@@ -154,4 +163,16 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
         return result;
     }
+}
+
+#[inline]
+fn color_output(input: i8, options: &Options, rng: &XorShiftRng) -> u32 {
+    if !options.colored {
+        return match input {
+            -1 => 0,
+            _ => 0xFFFFFFFF
+        };
+    }
+
+    0
 }
