@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/tversteeg/sprite-gen.svg?branch=master)](https://travis-ci.org/tversteeg/sprite-gen)
 
-# sprite (Executable)
+# [sprite](https://tversteeg.itch.io/sprite) (Executable)
 
 [![Cargo](https://img.shields.io/crates/v/sprite.svg)](https://crates.io/crates/sprite) [![License: GPL-3.0](https://img.shields.io/crates/l/sprite.svg)](#license) [![Downloads](https://img.shields.io/crates/d/sprite.svg)](#downloads)
 
