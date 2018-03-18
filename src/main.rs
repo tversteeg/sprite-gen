@@ -3,8 +3,8 @@ extern crate blit;
 extern crate minifb;
 extern crate direct_gui;
 
+use blit::BlitBuffer;
 use sprite_gen::*;
-use blit::*;
 use minifb::*;
 use direct_gui::*;
 use direct_gui::controls::*;
@@ -114,7 +114,7 @@ fn redraw(mask: &[i8], mut buffer: &mut Vec<u32>) {
 
     for y in 0..HEIGHT / sprite_size_padded.1 {
         for x in 0..WIDTH / 2 / sprite_size_padded.0 {
-            let buf = BlitBuffer::from_buffer(&gen_sprite(mask, 6, options), sprite_size.0 as i32, Color::from_u32(0xFFFFFF));
+            let buf = BlitBuffer::from_buffer(&gen_sprite(mask, 6, options), sprite_size.0 as i32, blit::Color::from_u32(0xFFFFFF));
             let pos = ((x * sprite_size_padded.0 + WIDTH / 2) as i32, (y * sprite_size_padded.1) as i32);
             buf.blit(&mut buffer, WIDTH, pos);
         }
