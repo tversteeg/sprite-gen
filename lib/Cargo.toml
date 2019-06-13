@@ -17,5 +17,5 @@ categories = ["games", "rendering", "game-engines"]
 travis-ci = {repository = "tversteeg/sprite-gen"}
 
 [dependencies]
-rand = "0.4"
+rand = "0.6"
 hsl = "0.1"
