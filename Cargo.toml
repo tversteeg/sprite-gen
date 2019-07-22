@@ -20,7 +20,7 @@ travis-ci = {repository = "tversteeg/sprite-gen"}
 [dependencies]
 sprite-gen = { path = "lib", version = "0" }
 blit = "0.5"
-minifb = "0.11"
+minifb = "0.12"
 direct-gui = "0.1"
 
 [[example]]
@@ -30,4 +30,4 @@ path = "examples/minifb.rs"
 [dev-dependencies]
 sprite-gen = { path = "lib", version = "0" }
 blit = "0.5"
-minifb = "0.11"
+minifb = "0.12"
