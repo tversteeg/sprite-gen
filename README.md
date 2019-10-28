@@ -8,7 +8,8 @@
 
 On Linux you need the `xorg-dev` package as required by `minifb` -- `sudo apt install xorg-dev`
 
-    cargo run --release
+    cargo install sprite
+    sprite
 
 This should produce the following window:
 
