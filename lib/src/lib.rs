@@ -1,10 +1,10 @@
 #![crate_name = "sprite_gen"]
 
-extern crate rand;
 extern crate hsl;
+extern crate rand;
 
-use rand::{Rng, XorShiftRng};
 use hsl::HSL;
+use rand::{Rng, XorShiftRng};
 
 /// The options for the `gen_sprite` function.
 #[derive(Copy, Clone)]
@@ -23,7 +23,7 @@ pub struct Options {
     /// A value from `0.0` - `1.0`.
     pub brightness_noise: f64,
     /// A value from `0.0` - `1.0`.
-    pub saturation: f64
+    pub saturation: f64,
 }
 
 impl Default for Options {
@@ -42,7 +42,7 @@ impl Default for Options {
             edge_brightness: 0.3,
             color_variations: 0.2,
             brightness_noise: 0.3,
-            saturation: 0.5
+            saturation: 0.5,
         }
     }
 }
@@ -108,7 +108,7 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
     // Color the mask image
     let colored: Vec<u32> = match options.colored {
         true => color_output(&mask, (mask_width, mask_height), &options, &mut rng),
-        false => onebit_output(&mask)
+        false => onebit_output(&mask),
     };
 
     // Check for mirroring
@@ -175,22 +175,29 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
 
         return result;
     }
-    
+
     return colored;
 }
 
 #[inline]
 fn onebit_output(mask: &[i8]) -> Vec<u32> {
-    mask.iter().map(|&v| match v {
-        -1 => 0,
-        _ => 0xFFFFFFFF
-    }).collect()
+    mask.iter()
+        .map(|&v| match v {
+            -1 => 0,
+            _ => 0xFFFFFFFF,
+        })
+        .collect()
 }
 
 #[inline]
-fn color_output(mask: &[i8], mask_size: (usize, usize), options: &Options, rng: &mut XorShiftRng) -> Vec<u32> {
+fn color_output(
+    mask: &[i8],
+    mask_size: (usize, usize),
+    options: &Options,
+    rng: &mut XorShiftRng,
+) -> Vec<u32> {
     let mut result = vec![0xFFFFFFFF; mask.len()];
-    
+
     let is_vertical_gradient = rng.next_f32() > 0.5;
     let saturation = (rng.next_f64() * options.saturation).max(0.0).min(1.0);
     let mut hue = rng.next_f64();
@@ -200,11 +207,14 @@ fn color_output(mask: &[i8], mask_size: (usize, usize), options: &Options, rng: 
 
     let uv_size = match is_vertical_gradient {
         true => (mask_size.1, mask_size.0),
-        false => mask_size
+        false => mask_size,
     };
 
     for u in 0..uv_size.0 {
-        let is_new_color = ((rng.gen_range(-1.0, 1.0) + rng.gen_range(-1.0, 1.0) + rng.gen_range(-1.0, 1.0)) / 3.0 as f64).abs();
+        let is_new_color =
+            ((rng.gen_range(-1.0, 1.0) + rng.gen_range(-1.0, 1.0) + rng.gen_range(-1.0, 1.0))
+                / 3.0 as f64)
+                .abs();
 
         if is_new_color > variation_check {
             hue = rng.next_f64();
@@ -213,7 +223,7 @@ fn color_output(mask: &[i8], mask_size: (usize, usize), options: &Options, rng: 
         for v in 0..uv_size.1 {
             let index = match is_vertical_gradient {
                 true => v + u * mask_size.0,
-                false => u + v * mask_size.0
+                false => u + v * mask_size.0,
             };
 
             let val = mask[index];
@@ -227,8 +237,9 @@ fn color_output(mask: &[i8], mask_size: (usize, usize), options: &Options, rng: 
             let mut rgb = HSL {
                 h: hue,
                 s: saturation,
-                l: brightness
-            }.to_rgb();
+                l: brightness,
+            }
+            .to_rgb();
 
             // Make the edges darker
             if val == -1 {

@@ -1,13 +1,13 @@
-extern crate sprite_gen;
 extern crate blit;
-extern crate minifb;
 extern crate direct_gui;
+extern crate minifb;
+extern crate sprite_gen;
 
 use blit::BlitBuffer;
-use sprite_gen::*;
-use minifb::*;
-use direct_gui::*;
 use direct_gui::controls::*;
+use direct_gui::*;
+use minifb::*;
+use sprite_gen::*;
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 300;
@@ -53,12 +53,22 @@ fn change_color_body2<S>(_: &mut Button<S>, state: ButtonState) {
     }
 }
 
-fn set_pixel(mask: &mut [i8], mask_width: usize, mouse: (i32, i32), pos: (usize, usize), size: (usize, usize)) -> bool {
+fn set_pixel(
+    mask: &mut [i8],
+    mask_width: usize,
+    mouse: (i32, i32),
+    pos: (usize, usize),
+    size: (usize, usize),
+) -> bool {
     let width = size.0 * GRID_SQUARE_SIZE;
     let height = size.1 * GRID_SQUARE_SIZE;
 
     let conv_mouse = (mouse.0 - pos.0 as i32, mouse.1 - pos.1 as i32);
-    if conv_mouse.0 < 0 || conv_mouse.0 >= width as i32 || conv_mouse.1 < 0 || conv_mouse.1 >= height as i32 {
+    if conv_mouse.0 < 0
+        || conv_mouse.0 >= width as i32
+        || conv_mouse.1 < 0
+        || conv_mouse.1 >= height as i32
+    {
         return false;
     }
 
@@ -73,7 +83,13 @@ fn set_pixel(mask: &mut [i8], mask_width: usize, mouse: (i32, i32), pos: (usize,
     }
 }
 
-fn draw_grid(mask: &[i8], mask_width: usize, buffer: &mut Vec<u32>, pos: (usize, usize), size: (usize, usize)) {
+fn draw_grid(
+    mask: &[i8],
+    mask_width: usize,
+    buffer: &mut Vec<u32>,
+    pos: (usize, usize),
+    size: (usize, usize),
+) {
     let width = size.0 * GRID_SQUARE_SIZE;
     let height = size.1 * GRID_SQUARE_SIZE;
 
@@ -83,7 +99,7 @@ fn draw_grid(mask: &[i8], mask_width: usize, buffer: &mut Vec<u32>, pos: (usize,
             let index = x + y * WIDTH;
             if (y - pos.1) % GRID_SQUARE_SIZE == 0 || (x - pos.0) % GRID_SQUARE_SIZE == 0 {
                 buffer[index] = 0xEEEEEE;
-            } else { 
+            } else {
                 let mask_x = (x - pos.0) / GRID_SQUARE_SIZE;
 
                 let mask_index = mask_x + mask_y * mask_width;
@@ -92,7 +108,7 @@ fn draw_grid(mask: &[i8], mask_width: usize, buffer: &mut Vec<u32>, pos: (usize,
                     0 => COLOR_ALWAYS_EMPTY,
                     1 => COLOR_BODY,
                     2 => COLOR_BODY2,
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
             }
         }
@@ -114,8 +130,15 @@ fn redraw(mask: &[i8], mut buffer: &mut Vec<u32>) {
 
     for y in 0..HEIGHT / sprite_size_padded.1 {
         for x in 0..WIDTH / 2 / sprite_size_padded.0 {
-            let buf = BlitBuffer::from_buffer(&gen_sprite(mask, 6, options), sprite_size.0 as i32, blit::Color::from_u32(0xFFFFFF));
-            let pos = ((x * sprite_size_padded.0 + WIDTH / 2) as i32, (y * sprite_size_padded.1) as i32);
+            let buf = BlitBuffer::from_buffer(
+                &gen_sprite(mask, 6, options),
+                sprite_size.0 as i32,
+                blit::Color::from_u32(0xFFFFFF),
+            );
+            let pos = (
+                (x * sprite_size_padded.0 + WIDTH / 2) as i32,
+                (y * sprite_size_padded.1) as i32,
+            );
             buf.blit(&mut buffer, WIDTH, pos);
         }
     }
@@ -127,32 +150,41 @@ fn main() {
     let mut buffer: Vec<u32> = vec![0x00FFFFFF; WIDTH * HEIGHT];
 
     let mut mask = [
-        0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 1, 1,
-        0, 0, 0, 0, 1,-1,
-        0, 0, 0, 1, 1,-1,
-        0, 0, 0, 1, 1,-1,
-        0, 0, 1, 1, 1,-1,
-        0, 1, 1, 1, 2, 2,
-        0, 1, 1, 1, 2, 2,
-        0, 1, 1, 1, 2, 2,
-        0, 1, 1, 1, 1,-1,
-        0, 0, 0, 1, 1, 1,
-        0, 0, 0, 0, 0, 0];
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, -1, 0, 0, 0, 1, 1, -1, 0, 0, 0, 1, 1,
+        -1, 0, 0, 1, 1, 1, -1, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 1,
+        -1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+    ];
 
     let options = WindowOptions {
         scale: Scale::X2,
         ..WindowOptions::default()
     };
-    let mut window = Window::new("Sprite - ESC to exit", WIDTH, HEIGHT, options).expect("Unable to open window");
+    let mut window =
+        Window::new("Sprite - ESC to exit", WIDTH, HEIGHT, options).expect("Unable to open window");
 
     let mut gui = Gui::new(screen_size);
 
     // The color selection buttons
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_EMPTY)).with_pos(4, 4).with_callback(change_color_always_empty));
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_SOLID)).with_pos(4, 16).with_callback(change_color_always_solid));
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY)).with_pos(4, 28).with_callback(change_color_body));
-    gui.register(Button::new((10, 10), Color::from_u32(COLOR_BODY2)).with_pos(4, 40).with_callback(change_color_body2));
+    gui.register(
+        Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_EMPTY))
+            .with_pos(4, 4)
+            .with_callback(change_color_always_empty),
+    );
+    gui.register(
+        Button::new((10, 10), Color::from_u32(COLOR_ALWAYS_SOLID))
+            .with_pos(4, 16)
+            .with_callback(change_color_always_solid),
+    );
+    gui.register(
+        Button::new((10, 10), Color::from_u32(COLOR_BODY))
+            .with_pos(4, 28)
+            .with_callback(change_color_body),
+    );
+    gui.register(
+        Button::new((10, 10), Color::from_u32(COLOR_BODY2))
+            .with_pos(4, 40)
+            .with_callback(change_color_body2),
+    );
 
     redraw(&mask, &mut buffer);
 
