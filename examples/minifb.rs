@@ -59,6 +59,6 @@ fn main() {
     }
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        window.update_with_buffer(&buffer).unwrap();
+        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
 }

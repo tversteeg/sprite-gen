@@ -83,6 +83,14 @@ fn set_pixel(
     }
 }
 
+fn choose_sprite(mask: &mut [i8], mouse: (i32, i32)) -> bool {
+    if mouse.0 < WIDTH as i32 / 2 {
+        return false;
+    }
+
+    true
+}
+
 fn draw_grid(
     mask: &[i8],
     mask_width: usize,
@@ -146,6 +154,8 @@ fn redraw(mask: &[i8], mut buffer: &mut Vec<u32>) {
 
 fn main() {
     let screen_size = (WIDTH as i32, HEIGHT as i32);
+    let grid_pos = (30, 4);
+    let grid_size = (6, 12);
 
     let mut buffer: Vec<u32> = vec![0x00FFFFFF; WIDTH * HEIGHT];
 
@@ -202,7 +212,9 @@ fn main() {
             cs.mouse_down = window.get_mouse_down(MouseButton::Left);
 
             if window.get_mouse_down(MouseButton::Left) {
-                if set_pixel(&mut mask, 6, cs.mouse_pos, (30, 4), (6, 12)) {
+                if set_pixel(&mut mask, 6, cs.mouse_pos, grid_pos, grid_size)
+                    || choose_sprite(&mut mask, cs.mouse_pos)
+                {
                     redraw_all = true;
                 }
             }
@@ -217,8 +229,8 @@ fn main() {
 
         gui.draw_to_buffer(&mut buffer);
 
-        draw_grid(&mask, 6, &mut buffer, (30, 4), (6, 12));
+        draw_grid(&mask, 6, &mut buffer, grid_pos, grid_size);
 
-        window.update_with_buffer(&buffer).unwrap();
+        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
 }
