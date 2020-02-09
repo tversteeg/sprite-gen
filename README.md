@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/tversteeg/sprite-gen.svg?branch=master)](https://travis-ci.org/tversteeg/sprite-gen)
+<a href="https://actions-badge.atrox.dev/tversteeg/sprite/goto"><img src="https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Ftversteeg%2Fsprite%2Fbadge&style=flat" alt="Build Status"/></a>
 
 # [sprite](https://tversteeg.itch.io/sprite) (Executable)
 
