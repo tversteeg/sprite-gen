@@ -67,7 +67,7 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
     let mask_height = mask_buffer.len() / mask_width;
 
     // Copy the array to this vector
-    let mut mask: Vec<i8> = mask_buffer.iter().cloned().collect();
+    let mut mask: Vec<i8> = mask_buffer.to_vec();
 
     let mut rng: XorShiftRng = rand::thread_rng().gen();
 
@@ -106,9 +106,10 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
     }
 
     // Color the mask image
-    let colored: Vec<u32> = match options.colored {
-        true => color_output(&mask, (mask_width, mask_height), &options, &mut rng),
-        false => onebit_output(&mask),
+    let colored: Vec<u32> = if options.colored {
+        color_output(&mask, (mask_width, mask_height), &options, &mut rng)
+    } else {
+        onebit_output(&mask)
     };
 
     // Check for mirroring
@@ -176,7 +177,7 @@ pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Ve
         return result;
     }
 
-    return colored;
+    colored
 }
 
 #[inline]
@@ -184,7 +185,7 @@ fn onebit_output(mask: &[i8]) -> Vec<u32> {
     mask.iter()
         .map(|&v| match v {
             -1 => 0,
-            _ => 0xFFFFFFFF,
+            _ => 0xFF_FF_FF_FF,
         })
         .collect()
 }
@@ -196,7 +197,7 @@ fn color_output(
     options: &Options,
     rng: &mut XorShiftRng,
 ) -> Vec<u32> {
-    let mut result = vec![0xFFFFFFFF; mask.len()];
+    let mut result = vec![0xFF_FF_FF_FF; mask.len()];
 
     let is_vertical_gradient = rng.next_f32() > 0.5;
     let saturation = (rng.next_f64() * options.saturation).max(0.0).min(1.0);
@@ -205,9 +206,10 @@ fn color_output(
     let variation_check = 1.0 - options.color_variations;
     let brightness_inv = 1.0 - options.brightness_noise;
 
-    let uv_size = match is_vertical_gradient {
-        true => (mask_size.1, mask_size.0),
-        false => mask_size,
+    let uv_size = if is_vertical_gradient {
+        (mask_size.1, mask_size.0)
+    } else {
+        mask_size
     };
 
     for u in 0..uv_size.0 {
@@ -221,9 +223,10 @@ fn color_output(
         }
 
         for v in 0..uv_size.1 {
-            let index = match is_vertical_gradient {
-                true => v + u * mask_size.0,
-                false => u + v * mask_size.0,
+            let index = if is_vertical_gradient {
+                v + u * mask_size.0
+            } else {
+                u + v * mask_size.0
             };
 
             let val = mask[index];

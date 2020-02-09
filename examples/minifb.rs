@@ -10,7 +10,7 @@ const WIDTH: usize = 200;
 const HEIGHT: usize = 200;
 
 fn main() {
-    let mut buffer: Vec<u32> = vec![0x00FFFFFF; WIDTH * HEIGHT];
+    let mut buffer: Vec<u32> = vec![0x00_FF_FF_FF; WIDTH * HEIGHT];
     let options = WindowOptions {
         scale: Scale::X2,
         ..WindowOptions::default()
@@ -48,7 +48,7 @@ fn main() {
             let buf = BlitBuffer::from_buffer(
                 &gen_sprite(&mask, mask_size.0, options),
                 sprite_size.0 as i32,
-                Color::from_u32(0xFFFFFFFF),
+                Color::from_u32(0xFF_FF_FF_FF),
             );
             let pos = (
                 (x * sprite_size_padded.0) as i32,
