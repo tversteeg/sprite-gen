@@ -2,7 +2,7 @@ use anyhow::Result;
 use druid::{
     lens::{Lens, LensWrap},
     platform_menus::common::{copy, cut, paste},
-    widget::{Align, Button, Flex, Label, Padding, Radio, RadioGroup, SizedBox, Slider},
+    widget::{Flex, Label, Padding, RadioGroup, Slider},
     AppLauncher, Data, LocalizedString, MenuDesc, Widget, WindowDesc,
 };
 
