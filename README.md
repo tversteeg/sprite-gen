@@ -6,7 +6,7 @@
 
 ## Run
 
-On Linux you need the `xorg-dev` package as required by `minifb` -- `sudo apt install xorg-dev`
+On Linux you need the [gtk-rs dependencies](https://gtk-rs.org/docs/requirements.html) to compile:
 
     cargo install sprite
     sprite
