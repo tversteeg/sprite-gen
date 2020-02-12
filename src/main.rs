@@ -14,7 +14,7 @@ lazy_static! {
 struct GridWidget {}
 
 impl GridWidget {
-    pub fn new() -> impl Widget<AppState> {
+    pub fn new_centered() -> impl Widget<AppState> {
         Align::centered(Self {})
     }
 }
@@ -121,7 +121,7 @@ fn ui_builder() -> impl Widget<AppState> {
                 .with_child(Padding::new(0.0, size_x_label), 0.0)
                 .with_child(Padding::new(5.0, size_y), 0.0)
                 .with_child(Padding::new(0.0, size_y_label), 0.0)
-                .with_child(Padding::new(20.0, GridWidget::new()), 1.0),
+                .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0),
             1.0,
         )
 }
