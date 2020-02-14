@@ -7,8 +7,10 @@ use druid::widget::*;
 use druid::*;
 use lazy_static::lazy_static;
 
+const MAX_GRID_SIZE: usize = 128;
+
 lazy_static! {
-    static ref GRID: Vec<FillType> = vec![FillType::Empty; 1024 * 1024];
+    static ref GRID: Vec<FillType> = vec![FillType::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE];
 }
 
 struct GridWidget {}
@@ -52,12 +54,33 @@ impl Widget<AppState> for GridWidget {
     // The paint method gets called last, after an event flow.
     // It goes event -> update -> layout -> paint, and each method can influence the next.
     // Basically, anything that changes the appearance of a widget causes a paint.
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, _data: &AppState, env: &Env) {
-        let rect = Rect::from_origin_size(Point::ORIGIN, paint_ctx.size());
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, env: &Env) {
+        let size = paint_ctx.size();
 
-        paint_ctx.stroke(rect, &env.get(theme::BORDER), 2.0);
+        let real_size_x = (data.size_x * 1024.0) as usize;
+        let real_size_y = (data.size_y * 1024.0) as usize;
 
-        paint_ctx.fill(rect, &env.get(theme::BACKGROUND_LIGHT));
+        let block_size = Size::new(
+            size.width / real_size_x as f64,
+            size.height / real_size_y as f64,
+        );
+
+        for y_pixels in 0..real_size_y {
+            for x_pixels in 0..real_size_x {
+                let offset = Point::new(
+                    x_pixels as f64 * block_size.width,
+                    y_pixels as f64 * block_size.height,
+                );
+
+                let rect = Rect::from_origin_size(offset, block_size);
+
+                let color = GRID[x_pixels + y_pixels * MAX_GRID_SIZE].color();
+
+                paint_ctx.stroke(rect, &env.get(theme::BORDER_LIGHT), 2.0);
+
+                paint_ctx.fill(rect, &color);
+            }
+        }
 
         // Let's burn some CPU to make a (partially transparent) image buffer
         /*
@@ -83,17 +106,38 @@ enum FillType {
     Color2,
 }
 
+impl FillType {
+    fn color(&self) -> Color {
+        match self {
+            FillType::Solid => Color::grey8(255),
+            FillType::Color1 => Color::grey8(200),
+            FillType::Color2 => Color::grey8(100),
+            FillType::Empty => Color::grey8(0),
+        }
+    }
+}
+
 impl Default for FillType {
     fn default() -> Self {
         FillType::Solid
     }
 }
 
-#[derive(Clone, Default, PartialEq, Data, Lens)]
+#[derive(Clone, PartialEq, Data, Lens)]
 struct AppState {
     pub fill_type: FillType,
     pub size_x: f64,
     pub size_y: f64,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            size_x: 0.05,
+            size_y: 0.05,
+            fill_type: FillType::default(),
+        }
+    }
 }
 
 fn ui_builder() -> impl Widget<AppState> {
@@ -107,11 +151,13 @@ fn ui_builder() -> impl Widget<AppState> {
         AppState::fill_type,
     );
     let size_x = LensWrap::new(Slider::new(), AppState::size_x);
-    let size_x_label =
-        Label::new(|data: &AppState, _env: &_| format!("x: {0:.0}", data.size_x * 1024.0));
+    let size_x_label = Label::new(|data: &AppState, _env: &_| {
+        format!("x: {0:.0}", data.size_x * MAX_GRID_SIZE as f64)
+    });
     let size_y = LensWrap::new(Slider::new(), AppState::size_y);
-    let size_y_label =
-        Label::new(|data: &AppState, _env: &_| format!("y: {0:.0}", data.size_y * 1024.0));
+    let size_y_label = Label::new(|data: &AppState, _env: &_| {
+        format!("y: {0:.0}", data.size_y * MAX_GRID_SIZE as f64)
+    });
 
     Flex::row()
         .with_child(Padding::new(5.0, fill_type), 0.0)
