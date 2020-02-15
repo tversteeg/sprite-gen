@@ -19,14 +19,20 @@ pub enum MaskValue {
     Body2,
 }
 
-impl From<MaskValue> for i8 {
-    fn from(from: MaskValue) -> Self {
-        match from {
+impl MaskValue {
+    pub fn i8(&self) -> i8 {
+        match self {
             MaskValue::Solid => -1,
             MaskValue::Empty => 0,
             MaskValue::Body1 => 1,
             MaskValue::Body2 => 2,
         }
+    }
+}
+
+impl From<MaskValue> for i8 {
+    fn from(from: MaskValue) -> Self {
+        from.i8()
     }
 }
 

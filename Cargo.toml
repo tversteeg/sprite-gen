@@ -21,7 +21,7 @@ travis-ci = {repository = "tversteeg/sprite-gen"}
 [dependencies]
 anyhow = "1.0.26"
 druid = "0.4.0"
-sprite-gen = { path = "lib", version = "0" }
+sprite-gen = { path = "lib", version = "0.1.5" }
 lazy_static = "1.4.0"
 
 [[example]]
@@ -29,6 +29,6 @@ name = "minifb"
 path = "examples/minifb.rs"
 
 [dev-dependencies]
-sprite-gen = { path = "lib", version = "0" }
+sprite-gen = { path = "lib", version = "0.1.5" }
 blit = "0.5.9"
 minifb = "0.15.3"

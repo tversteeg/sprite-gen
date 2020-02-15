@@ -2,17 +2,18 @@ use anyhow::Result;
 use druid::kurbo::*;
 use druid::lens::{Lens, LensWrap};
 use druid::piet::*;
-use druid::platform_menus::common::{copy, cut, paste};
 use druid::widget::*;
 use druid::*;
 use lazy_static::lazy_static;
-use std::sync::RwLock;
+use sprite_gen::{gen_sprite, MaskValue, Options};
+use std::{convert::From, sync::RwLock};
 
 const MAX_GRID_SIZE: usize = 128;
 
 lazy_static! {
-    static ref GRID: RwLock<Vec<FillType>> =
-        RwLock::new(vec![FillType::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE]);
+    static ref GRID: RwLock<Vec<MaskValue>> =
+        RwLock::new(vec![MaskValue::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE]);
+    static ref RESULTS: RwLock<Vec<u32>> = RwLock::new(Vec::new());
 }
 
 struct GridWidget {}
@@ -33,10 +34,13 @@ impl Widget<AppState> for GridWidget {
                 let index_x = (mouse.pos.x / block_size.width).floor() as usize;
                 let index_y = (mouse.pos.y / block_size.height).floor() as usize;
 
-                GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] = data.fill_type.clone();
+                GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] =
+                    From::from(data.fill_type.clone());
 
                 // Force a redraw of the grid
                 ctx.invalidate();
+
+                data.update = true;
             }
             _ => (),
         }
@@ -60,18 +64,9 @@ impl Widget<AppState> for GridWidget {
     ) -> Size {
         bc.debug_check("Grid");
 
-        // BoxConstraints are passed by the parent widget.
-        // This method can return any Size within those constraints:
-        // bc.constrain(my_size)
-        //
-        // To check if a dimension is infinite or not (e.g. scrolling):
-        // bc.is_width_bounded() / bc.is_height_bounded()
         bc.max()
     }
 
-    // The paint method gets called last, after an event flow.
-    // It goes event -> update -> layout -> paint, and each method can influence the next.
-    // Basically, anything that changes the appearance of a widget causes a paint.
     fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, env: &Env) {
         let size = paint_ctx.size();
 
@@ -95,7 +90,50 @@ impl Widget<AppState> for GridWidget {
                 paint_ctx.fill(rect, &color);
             }
         }
+    }
+}
 
+struct ResultWidget {}
+
+impl ResultWidget {
+    pub fn new_centered() -> impl Widget<AppState> {
+        Align::centered(Self {})
+    }
+}
+
+impl Widget<AppState> for ResultWidget {
+    fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, data: &mut AppState, _env: &Env) {
+        if data.update {
+            // Generate new sprites
+
+            let results = RESULTS.write().unwrap();
+
+            data.update = false;
+        }
+    }
+
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx,
+        _old_data: Option<&AppState>,
+        _data: &AppState,
+        _env: &Env,
+    ) {
+    }
+
+    fn layout(
+        &mut self,
+        _layout_ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        _data: &AppState,
+        _env: &Env,
+    ) -> Size {
+        bc.debug_check("Result");
+
+        bc.max()
+    }
+
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, env: &Env) {
         // Let's burn some CPU to make a (partially transparent) image buffer
         /*
         let image_data = make_image_data(256, 256);
@@ -112,36 +150,27 @@ impl Widget<AppState> for GridWidget {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Data)]
-enum FillType {
-    Solid,
-    Empty,
-    Color1,
-    Color2,
+pub trait MaskValueEx {
+    fn color(&self) -> Color;
 }
 
-impl FillType {
+impl MaskValueEx for MaskValue {
     fn color(&self) -> Color {
         match self {
-            FillType::Solid => Color::grey8(0),
-            FillType::Color1 => Color::grey8(200),
-            FillType::Color2 => Color::grey8(100),
-            FillType::Empty => Color::grey8(255),
+            MaskValue::Solid => Color::grey8(0),
+            MaskValue::Body1 => Color::grey8(200),
+            MaskValue::Body2 => Color::grey8(100),
+            MaskValue::Empty => Color::grey8(255),
         }
     }
 }
 
-impl Default for FillType {
-    fn default() -> Self {
-        FillType::Solid
-    }
-}
-
-#[derive(Clone, PartialEq, Data, Lens)]
+#[derive(Debug, Clone, PartialEq, Data, Lens)]
 struct AppState {
-    pub fill_type: FillType,
+    pub fill_type: i8,
     pub size_x: f64,
     pub size_y: f64,
+    pub update: bool,
 }
 
 impl AppState {
@@ -167,7 +196,8 @@ impl Default for AppState {
         Self {
             size_x: 0.05,
             size_y: 0.05,
-            fill_type: FillType::default(),
+            update: true,
+            fill_type: MaskValue::default() as i8,
         }
     }
 }
@@ -175,10 +205,10 @@ impl Default for AppState {
 fn ui_builder() -> impl Widget<AppState> {
     let fill_type = LensWrap::new(
         RadioGroup::new(vec![
-            ("Solid", FillType::Solid),
-            ("Empty", FillType::Empty),
-            ("Color 1", FillType::Color1),
-            ("Color 2", FillType::Color2),
+            ("Solid", MaskValue::Solid as i8),
+            ("Empty", MaskValue::Empty as i8),
+            ("Body 1", MaskValue::Body1 as i8),
+            ("Body 2", MaskValue::Body2 as i8),
         ]),
         AppState::fill_type,
     );
@@ -189,17 +219,25 @@ fn ui_builder() -> impl Widget<AppState> {
     let size_y_label =
         Label::new(|data: &AppState, _env: &_| format!("y pixels: {}", data.height()));
 
-    Flex::row()
-        .with_child(Padding::new(5.0, fill_type), 0.0)
+    Flex::column()
         .with_child(
-            Flex::column()
-                .with_child(Padding::new(5.0, size_x), 0.0)
-                .with_child(Padding::new(0.0, size_x_label), 0.0)
-                .with_child(Padding::new(5.0, size_y), 0.0)
-                .with_child(Padding::new(0.0, size_y_label), 0.0)
-                .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0),
+            Padding::new(
+                5.0,
+                Flex::row()
+                    .with_child(Padding::new(5.0, fill_type), 0.0)
+                    .with_child(
+                        Flex::column()
+                            .with_child(Padding::new(5.0, size_x), 0.0)
+                            .with_child(Padding::new(0.0, size_x_label), 0.0)
+                            .with_child(Padding::new(5.0, size_y), 0.0)
+                            .with_child(Padding::new(0.0, size_y_label), 0.0)
+                            .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0),
+                        1.0,
+                    ),
+            ),
             1.0,
         )
+        .with_child(Padding::new(20.0, ResultWidget::new_centered()), 0.5)
 }
 
 fn main_menu_builder<T: Data>() -> MenuDesc<T> {
@@ -213,12 +251,7 @@ fn main_menu_builder<T: Data>() -> MenuDesc<T> {
         base = base.append(druid::platform_menus::win::file::default());
     }
 
-    base.append(
-        MenuDesc::new(LocalizedString::new("common-menu-edit-menu"))
-            .append(cut())
-            .append(copy())
-            .append(paste()),
-    )
+    base
 }
 
 fn main() -> Result<()> {
