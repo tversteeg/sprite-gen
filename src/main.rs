@@ -175,11 +175,19 @@ impl Widget<AppState> for ResultWidget {
         bc.max()
     }
 
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, _env: &Env) {
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, env: &Env) {
         let ctx_size = paint_ctx.size();
+
+        let rect = Rect::from_origin_size(Point::ORIGIN, ctx_size);
+
+        paint_ctx.stroke(rect, &env.get(theme::BORDER_LIGHT), 2.0);
+
+        paint_ctx.fill(rect, &MaskValue::Empty.color());
 
         let scale = data.scale();
         let padding = 4;
+
+        // Make the background white
 
         // Render the results
         let mut x = 0;
@@ -213,10 +221,10 @@ pub trait MaskValueEx {
 impl MaskValueEx for MaskValue {
     fn color(&self) -> Color {
         match self {
-            MaskValue::Solid => Color::grey8(0),
-            MaskValue::Body1 => Color::grey8(200),
-            MaskValue::Body2 => Color::grey8(100),
-            MaskValue::Empty => Color::grey8(255),
+            MaskValue::Empty => Color::WHITE,
+            MaskValue::Solid => Color::grey8(64),
+            MaskValue::Body1 => Color::rgb8(255, 128, 128),
+            MaskValue::Body2 => Color::rgb8(128, 128, 255),
         }
     }
 }
