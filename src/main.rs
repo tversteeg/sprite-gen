@@ -13,7 +13,7 @@ const MAX_GRID_SIZE: usize = 128;
 lazy_static! {
     static ref GRID: RwLock<Vec<MaskValue>> =
         RwLock::new(vec![MaskValue::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE]);
-    static ref RESULTS: RwLock<Vec<u32>> = RwLock::new(Vec::new());
+    static ref RESULTS: RwLock<Vec<(usize, usize, Vec<u8>)>> = RwLock::new(Vec::new());
 }
 
 struct GridWidget {}
@@ -26,23 +26,19 @@ impl GridWidget {
 
 impl Widget<AppState> for GridWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
-        match event {
-            Event::MouseDown(mouse) => {
-                let size = ctx.size();
-                let block_size = data.block_size(&size);
+        if let Event::MouseDown(mouse) = event {
+            let size = ctx.size();
+            let block_size = data.block_size(&size);
 
-                let index_x = (mouse.pos.x / block_size.width).floor() as usize;
-                let index_y = (mouse.pos.y / block_size.height).floor() as usize;
+            let index_x = (mouse.pos.x / block_size.width).floor() as usize;
+            let index_y = (mouse.pos.y / block_size.height).floor() as usize;
 
-                GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] =
-                    From::from(data.fill_type.clone());
+            GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] = From::from(data.fill_type);
 
-                // Force a redraw of the grid
-                ctx.invalidate();
+            ctx.submit_command(Selector::new("recalculate_sprites"), None);
 
-                data.update = true;
-            }
-            _ => (),
+            // Force a redraw of the grid
+            ctx.invalidate();
         }
     }
 
@@ -102,13 +98,53 @@ impl ResultWidget {
 }
 
 impl Widget<AppState> for ResultWidget {
-    fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, data: &mut AppState, _env: &Env) {
-        if data.update {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
+        if let Event::Command(_) = event {
             // Generate new sprites
 
-            let results = RESULTS.write().unwrap();
+            let width = data.width();
+            let height = data.height();
 
-            data.update = false;
+            // Copy the mask
+            let mask = {
+                let grid = GRID.read().unwrap();
+
+                let mut new = vec![MaskValue::default(); width * height];
+
+                for y_pixels in 0..height {
+                    for x_pixels in 0..width {
+                        new[y_pixels * width + x_pixels] =
+                            grid[y_pixels * MAX_GRID_SIZE + x_pixels].clone();
+                    }
+                }
+
+                new
+            };
+
+            let mut results = RESULTS.write().unwrap();
+
+            results.clear();
+
+            for _ in 0..100 {
+                results.push((
+                    width,
+                    height,
+                    gen_sprite(&mask, width, Options::default())
+                        // Convert Vec<u32> to a Vec<u8>
+                        .into_iter()
+                        .map(|p| {
+                            vec![
+                                (p & 0xFF) as u8,
+                                ((p >> 8) & 0xFF) as u8,
+                                ((p >> 16) & 0xFF) as u8,
+                            ]
+                        })
+                        .flatten()
+                        .collect::<_>(),
+                ));
+            }
+
+            ctx.invalidate();
         }
     }
 
@@ -133,20 +169,27 @@ impl Widget<AppState> for ResultWidget {
         bc.max()
     }
 
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, env: &Env) {
-        // Let's burn some CPU to make a (partially transparent) image buffer
-        /*
-        let image_data = make_image_data(256, 256);
-        let image = paint_ctx
-            .make_image(256, 256, &image_data, ImageFormat::RgbaSeparate)
-            .unwrap();
-        // The image is automatically scaled to fit the rect you pass to draw_image
-        paint_ctx.draw_image(
-            &image,
-            Rect::from_origin_size(Point::ORIGIN, size),
-            InterpolationMode::Bilinear,
-        );
-        */
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, _data: &AppState, _env: &Env) {
+        let scale = 4;
+        let padding = 4;
+
+        // Render the results
+        for (x, (width, height, result)) in RESULTS.read().unwrap().iter().enumerate() {
+            let size = Size::new((width * scale) as f64, (height * scale) as f64);
+
+            let image = paint_ctx
+                .make_image(*width, *height, &result, ImageFormat::Rgb)
+                .unwrap();
+            // The image is automatically scaled to fit the rect you pass to draw_image
+            paint_ctx.draw_image(
+                &image,
+                Rect::from_origin_size(
+                    Point::new((x * (width * scale + padding)) as f64, 0.0),
+                    size,
+                ),
+                InterpolationMode::NearestNeighbor,
+            );
+        }
     }
 }
 
@@ -170,7 +213,6 @@ struct AppState {
     pub fill_type: i8,
     pub size_x: f64,
     pub size_y: f64,
-    pub update: bool,
 }
 
 impl AppState {
@@ -196,8 +238,7 @@ impl Default for AppState {
         Self {
             size_x: 0.05,
             size_y: 0.05,
-            update: true,
-            fill_type: MaskValue::default() as i8,
+            fill_type: MaskValue::Solid.i8(),
         }
     }
 }
@@ -205,10 +246,10 @@ impl Default for AppState {
 fn ui_builder() -> impl Widget<AppState> {
     let fill_type = LensWrap::new(
         RadioGroup::new(vec![
-            ("Solid", MaskValue::Solid as i8),
-            ("Empty", MaskValue::Empty as i8),
-            ("Body 1", MaskValue::Body1 as i8),
-            ("Body 2", MaskValue::Body2 as i8),
+            ("Solid", MaskValue::Solid.i8()),
+            ("Empty", MaskValue::Empty.i8()),
+            ("Body 1", MaskValue::Body1.i8()),
+            ("Body 2", MaskValue::Body2.i8()),
         ]),
         AppState::fill_type,
     );
