@@ -6,11 +6,13 @@ use druid::platform_menus::common::{copy, cut, paste};
 use druid::widget::*;
 use druid::*;
 use lazy_static::lazy_static;
+use std::sync::RwLock;
 
 const MAX_GRID_SIZE: usize = 128;
 
 lazy_static! {
-    static ref GRID: Vec<FillType> = vec![FillType::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE];
+    static ref GRID: RwLock<Vec<FillType>> =
+        RwLock::new(vec![FillType::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE]);
 }
 
 struct GridWidget {}
@@ -22,7 +24,23 @@ impl GridWidget {
 }
 
 impl Widget<AppState> for GridWidget {
-    fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, _data: &mut AppState, _env: &Env) {}
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
+        match event {
+            Event::MouseDown(mouse) => {
+                let size = ctx.size();
+                let block_size = data.block_size(&size);
+
+                let index_x = (mouse.pos.x / block_size.width).floor() as usize;
+                let index_y = (mouse.pos.y / block_size.height).floor() as usize;
+
+                GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] = data.fill_type.clone();
+
+                // Force a redraw of the grid
+                ctx.invalidate();
+            }
+            _ => (),
+        }
+    }
 
     fn update(
         &mut self,
@@ -57,16 +75,12 @@ impl Widget<AppState> for GridWidget {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, env: &Env) {
         let size = paint_ctx.size();
 
-        let real_size_x = (data.size_x * 1024.0) as usize;
-        let real_size_y = (data.size_y * 1024.0) as usize;
+        let block_size = data.block_size(&size);
 
-        let block_size = Size::new(
-            size.width / real_size_x as f64,
-            size.height / real_size_y as f64,
-        );
+        let grid = GRID.read().unwrap();
 
-        for y_pixels in 0..real_size_y {
-            for x_pixels in 0..real_size_x {
+        for y_pixels in 0..data.height() {
+            for x_pixels in 0..data.width() {
                 let offset = Point::new(
                     x_pixels as f64 * block_size.width,
                     y_pixels as f64 * block_size.height,
@@ -74,7 +88,7 @@ impl Widget<AppState> for GridWidget {
 
                 let rect = Rect::from_origin_size(offset, block_size);
 
-                let color = GRID[x_pixels + y_pixels * MAX_GRID_SIZE].color();
+                let color = grid[x_pixels + y_pixels * MAX_GRID_SIZE].color();
 
                 paint_ctx.stroke(rect, &env.get(theme::BORDER_LIGHT), 2.0);
 
@@ -109,10 +123,10 @@ enum FillType {
 impl FillType {
     fn color(&self) -> Color {
         match self {
-            FillType::Solid => Color::grey8(255),
+            FillType::Solid => Color::grey8(0),
             FillType::Color1 => Color::grey8(200),
             FillType::Color2 => Color::grey8(100),
-            FillType::Empty => Color::grey8(0),
+            FillType::Empty => Color::grey8(255),
         }
     }
 }
@@ -128,6 +142,24 @@ struct AppState {
     pub fill_type: FillType,
     pub size_x: f64,
     pub size_y: f64,
+}
+
+impl AppState {
+    // Size of each grid block
+    pub fn block_size(&self, total_area: &Size) -> Size {
+        Size::new(
+            total_area.width / self.width() as f64,
+            total_area.height / self.height() as f64,
+        )
+    }
+
+    pub fn width(&self) -> usize {
+        (self.size_x * MAX_GRID_SIZE as f64).floor() as usize
+    }
+
+    pub fn height(&self) -> usize {
+        (self.size_y * MAX_GRID_SIZE as f64).floor() as usize
+    }
 }
 
 impl Default for AppState {
@@ -151,13 +183,11 @@ fn ui_builder() -> impl Widget<AppState> {
         AppState::fill_type,
     );
     let size_x = LensWrap::new(Slider::new(), AppState::size_x);
-    let size_x_label = Label::new(|data: &AppState, _env: &_| {
-        format!("x: {0:.0}", data.size_x * MAX_GRID_SIZE as f64)
-    });
+    let size_x_label =
+        Label::new(|data: &AppState, _env: &_| format!("x pixels: {}", data.width()));
     let size_y = LensWrap::new(Slider::new(), AppState::size_y);
-    let size_y_label = Label::new(|data: &AppState, _env: &_| {
-        format!("y: {0:.0}", data.size_y * MAX_GRID_SIZE as f64)
-    });
+    let size_y_label =
+        Label::new(|data: &AppState, _env: &_| format!("y pixels: {}", data.height()));
 
     Flex::row()
         .with_child(Padding::new(5.0, fill_type), 0.0)
