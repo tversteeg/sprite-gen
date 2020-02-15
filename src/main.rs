@@ -126,18 +126,23 @@ impl Widget<AppState> for ResultWidget {
 
             results.clear();
 
+            let options = data.options();
+
+            let result_width = if options.mirror_x { width * 2 } else { width };
+            let result_height = if options.mirror_y { height * 2 } else { height };
+
             for _ in 0..100 {
                 results.push((
-                    width,
-                    height,
-                    gen_sprite(&mask, width, Options::default())
+                    result_width,
+                    result_height,
+                    gen_sprite(&mask, width, options)
                         // Convert Vec<u32> to a Vec<u8>
                         .into_iter()
                         .map(|p| {
                             vec![
-                                (p & 0xFF) as u8,
-                                ((p >> 8) & 0xFF) as u8,
                                 ((p >> 16) & 0xFF) as u8,
+                                ((p >> 8) & 0xFF) as u8,
+                                (p & 0xFF) as u8,
                             ]
                         })
                         .flatten()
@@ -171,11 +176,15 @@ impl Widget<AppState> for ResultWidget {
     }
 
     fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, _env: &Env) {
+        let ctx_size = paint_ctx.size();
+
         let scale = data.scale();
         let padding = 4;
 
         // Render the results
-        for (x, (width, height, result)) in RESULTS.read().unwrap().iter().enumerate() {
+        let mut x = 0;
+        let mut y = 0;
+        for (width, height, result) in RESULTS.read().unwrap().iter() {
             let size = Size::new((width * scale) as f64, (height * scale) as f64);
 
             let image = paint_ctx
@@ -184,12 +193,15 @@ impl Widget<AppState> for ResultWidget {
             // The image is automatically scaled to fit the rect you pass to draw_image
             paint_ctx.draw_image(
                 &image,
-                Rect::from_origin_size(
-                    Point::new((x * (width * scale + padding)) as f64, 0.0),
-                    size,
-                ),
+                Rect::from_origin_size(Point::new(x as f64, y as f64), size),
                 InterpolationMode::NearestNeighbor,
             );
+
+            x += width * scale + padding;
+            if x as f64 + size.width > ctx_size.width {
+                x = 0;
+                y += height * scale + padding;
+            }
         }
     }
 }
@@ -215,6 +227,8 @@ struct AppState {
     pub size_x: f64,
     pub size_y: f64,
     pub render_scale: f64,
+    pub mirror_x: bool,
+    pub mirror_y: bool,
 }
 
 impl AppState {
@@ -237,6 +251,14 @@ impl AppState {
     pub fn scale(&self) -> usize {
         (self.render_scale * MAX_SCALE as f64).floor().max(1.0) as usize
     }
+
+    pub fn options(&self) -> Options {
+        Options {
+            mirror_x: self.mirror_x,
+            mirror_y: self.mirror_y,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for AppState {
@@ -245,6 +267,8 @@ impl Default for AppState {
             size_x: 0.05,
             size_y: 0.05,
             render_scale: 0.2,
+            mirror_x: true,
+            mirror_y: false,
             fill_type: MaskValue::Solid.i8(),
         }
     }
@@ -270,21 +294,45 @@ fn ui_builder() -> impl Widget<AppState> {
     let scale_label =
         Label::new(|data: &AppState, _env: &_| format!("render scale: {}", data.scale()));
 
+    let options_box = {
+        let mirror_x = LensWrap::new(Checkbox::new(), AppState::mirror_x);
+        let mirror_x_label = Label::new("Mirror X");
+        let mirror_y = LensWrap::new(Checkbox::new(), AppState::mirror_y);
+        let mirror_y_label = Label::new("Mirror Y");
+        Padding::new(
+            20.0,
+            Flex::column()
+                .with_child(
+                    Flex::row()
+                        .with_child(Padding::new(5.0, mirror_x), 0.0)
+                        .with_child(Padding::new(5.0, mirror_x_label), 1.0),
+                    0.0,
+                )
+                .with_child(
+                    Flex::row()
+                        .with_child(Padding::new(5.0, mirror_y), 0.0)
+                        .with_child(Padding::new(5.0, mirror_y_label), 1.0),
+                    0.0,
+                ),
+        )
+    };
+
     Flex::column()
         .with_child(
             Padding::new(
                 5.0,
                 Flex::row()
-                    .with_child(Padding::new(5.0, fill_type), 0.0)
+                    .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0)
                     .with_child(
                         Flex::column()
+                            .with_child(Padding::new(5.0, fill_type), 0.0)
                             .with_child(Padding::new(5.0, size_x), 0.0)
-                            .with_child(Padding::new(0.0, size_x_label), 0.0)
+                            .with_child(size_x_label, 0.0)
                             .with_child(Padding::new(5.0, size_y), 0.0)
-                            .with_child(Padding::new(0.0, size_y_label), 0.0)
-                            .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0)
+                            .with_child(size_y_label, 0.0)
                             .with_child(Padding::new(5.0, scale), 0.0)
-                            .with_child(Padding::new(0.0, scale_label), 0.0),
+                            .with_child(scale_label, 0.0)
+                            .with_child(options_box, 1.0),
                         1.0,
                     ),
             ),
