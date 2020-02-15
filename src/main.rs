@@ -9,6 +9,7 @@ use sprite_gen::{gen_sprite, MaskValue, Options};
 use std::{convert::From, sync::RwLock};
 
 const MAX_GRID_SIZE: usize = 128;
+const MAX_SCALE: usize = 32;
 
 lazy_static! {
     static ref GRID: RwLock<Vec<MaskValue>> =
@@ -169,8 +170,8 @@ impl Widget<AppState> for ResultWidget {
         bc.max()
     }
 
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, _data: &AppState, _env: &Env) {
-        let scale = 4;
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &AppState, _env: &Env) {
+        let scale = data.scale();
         let padding = 4;
 
         // Render the results
@@ -213,6 +214,7 @@ struct AppState {
     pub fill_type: i8,
     pub size_x: f64,
     pub size_y: f64,
+    pub render_scale: f64,
 }
 
 impl AppState {
@@ -225,11 +227,15 @@ impl AppState {
     }
 
     pub fn width(&self) -> usize {
-        (self.size_x * MAX_GRID_SIZE as f64).floor() as usize
+        (self.size_x * MAX_GRID_SIZE as f64).floor().max(1.0) as usize
     }
 
     pub fn height(&self) -> usize {
-        (self.size_y * MAX_GRID_SIZE as f64).floor() as usize
+        (self.size_y * MAX_GRID_SIZE as f64).floor().max(1.0) as usize
+    }
+
+    pub fn scale(&self) -> usize {
+        (self.render_scale * MAX_SCALE as f64).floor().max(1.0) as usize
     }
 }
 
@@ -238,6 +244,7 @@ impl Default for AppState {
         Self {
             size_x: 0.05,
             size_y: 0.05,
+            render_scale: 0.2,
             fill_type: MaskValue::Solid.i8(),
         }
     }
@@ -259,6 +266,9 @@ fn ui_builder() -> impl Widget<AppState> {
     let size_y = LensWrap::new(Slider::new(), AppState::size_y);
     let size_y_label =
         Label::new(|data: &AppState, _env: &_| format!("y pixels: {}", data.height()));
+    let scale = LensWrap::new(Slider::new(), AppState::render_scale);
+    let scale_label =
+        Label::new(|data: &AppState, _env: &_| format!("render scale: {}", data.scale()));
 
     Flex::column()
         .with_child(
@@ -272,7 +282,9 @@ fn ui_builder() -> impl Widget<AppState> {
                             .with_child(Padding::new(0.0, size_x_label), 0.0)
                             .with_child(Padding::new(5.0, size_y), 0.0)
                             .with_child(Padding::new(0.0, size_y_label), 0.0)
-                            .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0),
+                            .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0)
+                            .with_child(Padding::new(5.0, scale), 0.0)
+                            .with_child(Padding::new(0.0, scale_label), 0.0),
                         1.0,
                     ),
             ),
