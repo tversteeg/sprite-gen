@@ -6,6 +6,30 @@ extern crate rand;
 use hsl::HSL;
 use rand::{Rng, XorShiftRng};
 
+/// Replacement for the `i8` datatype that can be passed to `gen_sprite`.
+#[derive(Clone, Eq, PartialEq)]
+pub enum FillType {
+    /// - `-1`: This pixel will always be a border.
+    Solid,
+    /// - `0`: This pixel will always be empty.
+    Empty,
+    /// - `1`: This pixel will either be empty or filled (body).
+    Color1,
+    /// - `2`: This pixel will either be a border or filled (body).
+    Color2,
+}
+
+impl From<FillType> for i8 {
+    fn from(from: FillType) -> Self {
+        match from {
+            FillType::Solid => -1,
+            FillType::Empty => 0,
+            FillType::Color1 => 1,
+            FillType::Color2 => 2,
+        }
+    }
+}
+
 /// The options for the `gen_sprite` function.
 #[derive(Copy, Clone)]
 pub struct Options {
@@ -58,20 +82,27 @@ impl Default for Options {
 /// - `2`: This pixel will either be a border or filled (body).
 ///
 /// ```
-/// use sprite_gen::{gen_sprite, Options};
+/// use sprite_gen::{gen_sprite, Options, FillType};
 ///
-/// let mask = vec![1i8; 12 * 12];
+/// let mask = vec![FillType::Empty; 12 * 12];
 /// let buffer = gen_sprite(&mask, 12, Options::default());
 /// ```
-pub fn gen_sprite(mask_buffer: &[i8], mask_width: usize, options: Options) -> Vec<u32> {
+pub fn gen_sprite<T>(mask_buffer: &[T], mask_width: usize, options: Options) -> Vec<u32>
+where
+    T: Into<i8> + Clone,
+{
     let mask_height = mask_buffer.len() / mask_width;
 
     // Copy the array to this vector
-    let mut mask: Vec<i8> = mask_buffer.to_vec();
+    let mut mask: Vec<i8> = mask_buffer
+        .iter()
+        .map(|v| std::convert::Into::into(v.clone()))
+        .collect::<_>();
 
     let mut rng: XorShiftRng = rand::thread_rng().gen();
 
-    // Generate a random sample, if it's a internal body there is a 50% chance it will be empty. If it's a regular body there is a 50% chance it will turn into a border
+    // Generate a random sample, if it's a internal body there is a 50% chance it will be empty
+    // If it's a regular body there is a 50% chance it will turn into a border
     for val in mask.iter_mut() {
         if *val == 1 {
             // Either 0 or 1
