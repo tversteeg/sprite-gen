@@ -8,25 +8,42 @@ use rand::{Rng, XorShiftRng};
 
 /// Replacement for the `i8` datatype that can be passed to `gen_sprite`.
 #[derive(Clone, Eq, PartialEq)]
-pub enum FillType {
+pub enum MaskValue {
     /// - `-1`: This pixel will always be a border.
     Solid,
     /// - `0`: This pixel will always be empty.
     Empty,
     /// - `1`: This pixel will either be empty or filled (body).
-    Color1,
+    Body1,
     /// - `2`: This pixel will either be a border or filled (body).
-    Color2,
+    Body2,
 }
 
-impl From<FillType> for i8 {
-    fn from(from: FillType) -> Self {
+impl From<MaskValue> for i8 {
+    fn from(from: MaskValue) -> Self {
         match from {
-            FillType::Solid => -1,
-            FillType::Empty => 0,
-            FillType::Color1 => 1,
-            FillType::Color2 => 2,
+            MaskValue::Solid => -1,
+            MaskValue::Empty => 0,
+            MaskValue::Body1 => 1,
+            MaskValue::Body2 => 2,
         }
+    }
+}
+
+impl From<i8> for MaskValue {
+    fn from(from: i8) -> Self {
+        match from {
+            -1 => MaskValue::Solid,
+            1 => MaskValue::Body1,
+            2 => MaskValue::Body2,
+            _ => MaskValue::Empty,
+        }
+    }
+}
+
+impl Default for MaskValue {
+    fn default() -> Self {
+        MaskValue::Empty
     }
 }
 
@@ -82,9 +99,9 @@ impl Default for Options {
 /// - `2`: This pixel will either be a border or filled (body).
 ///
 /// ```
-/// use sprite_gen::{gen_sprite, Options, FillType};
+/// use sprite_gen::{gen_sprite, Options, MaskValue};
 ///
-/// let mask = vec![FillType::Empty; 12 * 12];
+/// let mask = vec![MaskValue::Empty; 12 * 12];
 /// let buffer = gen_sprite(&mask, 12, Options::default());
 /// ```
 pub fn gen_sprite<T>(mask_buffer: &[T], mask_width: usize, options: Options) -> Vec<u32>
