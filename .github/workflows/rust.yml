@@ -37,7 +37,6 @@ jobs:
     
       - name: Install libgtk-dev
         run: |
-          sudo apt update
           sudo apt install libgtk-3-dev
         
       - uses: actions-rs/toolchain@v1
@@ -76,7 +75,6 @@ jobs:
         
       - name: Install libgtk-dev
         run: |
-          sudo apt update
           sudo apt install libgtk-3-dev
           
       - uses: actions-rs/toolchain@v1
@@ -111,7 +109,6 @@ jobs:
 
       - name: Install libgtk-dev
         run: |
-          sudo apt updat
           sudo apt install libgtk-3-dev
         if: contains(matrix.os, 'ubuntu')
           
@@ -195,7 +192,6 @@ jobs:
 
       - name: Install libgtk-dev
         run: |
-          sudo apt update
           sudo apt install libgtk-3-dev
         if: contains(matrix.os, 'ubuntu')
 
