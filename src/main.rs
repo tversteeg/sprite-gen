@@ -11,6 +11,8 @@ use std::{convert::From, sync::RwLock};
 const MAX_GRID_SIZE: usize = 128;
 const MAX_SCALE: usize = 32;
 
+const RECALCULATE_SPRITES: Selector = Selector::new("recalculate_sprites");
+
 lazy_static! {
     static ref GRID: RwLock<Vec<MaskValue>> =
         RwLock::new(vec![MaskValue::Empty; MAX_GRID_SIZE * MAX_GRID_SIZE]);
@@ -36,7 +38,7 @@ impl Widget<AppState> for GridWidget {
 
             GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] = From::from(data.fill_type);
 
-            ctx.submit_command(Selector::new("recalculate_sprites"), None);
+            ctx.submit_command(RECALCULATE_SPRITES, None);
 
             // Force a redraw of the grid
             ctx.invalidate();
@@ -100,57 +102,59 @@ impl ResultWidget {
 
 impl Widget<AppState> for ResultWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
-        if let Event::Command(_) = event {
-            // Generate new sprites
+        if let Event::Command(cmd) = event {
+            if cmd.selector == RECALCULATE_SPRITES {
+                // Generate new sprites
 
-            let width = data.width();
-            let height = data.height();
+                let width = data.width();
+                let height = data.height();
 
-            // Copy the mask
-            let mask = {
-                let grid = GRID.read().unwrap();
+                // Copy the mask
+                let mask = {
+                    let grid = GRID.read().unwrap();
 
-                let mut new = vec![MaskValue::default(); width * height];
+                    let mut new = vec![MaskValue::default(); width * height];
 
-                for y_pixels in 0..height {
-                    for x_pixels in 0..width {
-                        new[y_pixels * width + x_pixels] =
-                            grid[y_pixels * MAX_GRID_SIZE + x_pixels].clone();
+                    for y_pixels in 0..height {
+                        for x_pixels in 0..width {
+                            new[y_pixels * width + x_pixels] =
+                                grid[y_pixels * MAX_GRID_SIZE + x_pixels].clone();
+                        }
                     }
+
+                    new
+                };
+
+                let mut results = RESULTS.write().unwrap();
+
+                results.clear();
+
+                let options = data.options();
+
+                let result_width = if options.mirror_x { width * 2 } else { width };
+                let result_height = if options.mirror_y { height * 2 } else { height };
+
+                for _ in 0..100 {
+                    results.push((
+                        result_width,
+                        result_height,
+                        gen_sprite(&mask, width, options)
+                            // Convert Vec<u32> to a Vec<u8>
+                            .into_iter()
+                            .map(|p| {
+                                vec![
+                                    ((p >> 16) & 0xFF) as u8,
+                                    ((p >> 8) & 0xFF) as u8,
+                                    (p & 0xFF) as u8,
+                                ]
+                            })
+                            .flatten()
+                            .collect::<_>(),
+                    ));
                 }
 
-                new
-            };
-
-            let mut results = RESULTS.write().unwrap();
-
-            results.clear();
-
-            let options = data.options();
-
-            let result_width = if options.mirror_x { width * 2 } else { width };
-            let result_height = if options.mirror_y { height * 2 } else { height };
-
-            for _ in 0..100 {
-                results.push((
-                    result_width,
-                    result_height,
-                    gen_sprite(&mask, width, options)
-                        // Convert Vec<u32> to a Vec<u8>
-                        .into_iter()
-                        .map(|p| {
-                            vec![
-                                ((p >> 16) & 0xFF) as u8,
-                                ((p >> 8) & 0xFF) as u8,
-                                (p & 0xFF) as u8,
-                            ]
-                        })
-                        .flatten()
-                        .collect::<_>(),
-                ));
+                ctx.invalidate();
             }
-
-            ctx.invalidate();
         }
     }
 
