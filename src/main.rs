@@ -420,6 +420,8 @@ fn ui_builder() -> impl Widget<AppState> {
         )
     };
 
+    let export_button = Button::new("Export", |_ctx, _data, _env| {});
+
     Flex::column()
         .with_child(
             Padding::new(
@@ -435,7 +437,8 @@ fn ui_builder() -> impl Widget<AppState> {
                             .with_child(size_y_label, 0.0)
                             .with_child(Padding::new(5.0, scale), 0.0)
                             .with_child(scale_label, 0.0)
-                            .with_child(options_box, 1.0),
+                            .with_child(options_box, 1.0)
+                            .with_child(Padding::new(5.0, export_button), 0.0),
                         1.0,
                     ),
             ),
