@@ -291,6 +291,24 @@ impl AppState {
             ..Default::default()
         }
     }
+
+    pub fn pixels(&self) -> Vec<MaskValue> {
+        let width = self.width();
+        let height = self.height();
+        GRID.read()
+            .unwrap()
+            .iter()
+            // Only take the size needed instead of the full 1024 * 1024
+            .enumerate()
+            .filter_map(move |(index, p)| {
+                if index % MAX_GRID_SIZE < width && index / MAX_GRID_SIZE < height {
+                    Some(p.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<_>()
+    }
 }
 
 impl Default for AppState {
@@ -354,14 +372,7 @@ impl AppDelegate<AppState> for Delegate {
                         &Encoded {
                             state: data.clone(),
                             // Convert the grid to an array of i8
-                            grid: GRID
-                                .read()
-                                .unwrap()
-                                .iter()
-                                // Only take the size needed instead of the full 1024 * 1024
-                                .take(data.width() * data.height())
-                                .map(|p| p.i8())
-                                .collect::<_>(),
+                            grid: data.pixels().into_iter().map(|p| p.i8()).collect::<_>(),
                         },
                     )
                     .unwrap();
@@ -400,11 +411,8 @@ fn copy_to_clipboard(data: &AppState) {
         data.width(),
         data.height(),
         data.options(),
-        GRID.read()
-            .unwrap()
-            .iter()
-            // Only take the size needed instead of the full 1024 * 1024
-            .take(data.width() * data.height())
+        data.pixels()
+            .into_iter()
             .map(|p| format!("MaskValue::{:?}", p))
             .join(", ")
     );
