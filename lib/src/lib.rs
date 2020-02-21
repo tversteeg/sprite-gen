@@ -7,7 +7,7 @@ use hsl::HSL;
 use rand::{Rng, XorShiftRng};
 
 /// Replacement for the `i8` datatype that can be passed to `gen_sprite`.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MaskValue {
     /// - `-1`: This pixel will always be a border.
     Solid,

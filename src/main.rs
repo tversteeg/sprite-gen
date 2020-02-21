@@ -377,6 +377,17 @@ impl AppDelegate<AppState> for Delegate {
     }
 }
 
+fn copy_to_clipboard(data: &AppState) {
+    let grid = GRID
+        .read()
+        .unwrap()
+        .iter()
+        // Only take the size needed instead of the full 1024 * 1024
+        .take(data.width() * data.height())
+        .map(|p| format!("{:?}", p))
+        .collect::<_>();
+}
+
 fn ui_builder() -> impl Widget<AppState> {
     let fill_type = LensWrap::new(
         RadioGroup::new(vec![
@@ -420,7 +431,9 @@ fn ui_builder() -> impl Widget<AppState> {
         )
     };
 
-    let export_button = Button::new("Export", |_ctx, _data, _env| {});
+    let copy_to_clipboard_button = Button::new("Copy to clipboard", |_ctx, data, _env| {
+        copy_to_clipboard(data)
+    });
 
     Flex::column()
         .with_child(
@@ -438,7 +451,7 @@ fn ui_builder() -> impl Widget<AppState> {
                             .with_child(Padding::new(5.0, scale), 0.0)
                             .with_child(scale_label, 0.0)
                             .with_child(options_box, 1.0)
-                            .with_child(Padding::new(5.0, export_button), 0.0),
+                            .with_child(Padding::new(5.0, copy_to_clipboard_button), 0.0),
                         1.0,
                     ),
             ),
