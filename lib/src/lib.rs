@@ -54,7 +54,7 @@ impl Default for MaskValue {
 }
 
 /// The options for the `gen_sprite` function.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Options {
     /// `true` if the result buffer should be mirrored along the X axis.
     pub mirror_x: bool,

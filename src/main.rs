@@ -5,6 +5,7 @@ use druid::lens::{Lens, LensWrap};
 use druid::piet::*;
 use druid::widget::*;
 use druid::*;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use sprite_gen::{gen_sprite, MaskValue, Options};
@@ -378,14 +379,19 @@ impl AppDelegate<AppState> for Delegate {
 }
 
 fn copy_to_clipboard(data: &AppState) {
-    let grid = GRID
-        .read()
-        .unwrap()
-        .iter()
-        // Only take the size needed instead of the full 1024 * 1024
-        .take(data.width() * data.height())
-        .map(|p| format!("{:?}", p))
-        .collect::<_>();
+    let string = format!(
+        "let options = Options::{}\n[{}]",
+        data.options(),
+        GRID.read()
+            .unwrap()
+            .iter()
+            // Only take the size needed instead of the full 1024 * 1024
+            .take(data.width() * data.height())
+            .map(|p| format!("MaskValue::{:?}", p))
+            .join(", ")
+    );
+
+    dbg!(string);
 }
 
 fn ui_builder() -> impl Widget<AppState> {
