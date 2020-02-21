@@ -134,8 +134,8 @@ impl Widget<AppState> for ResultWidget {
 
                 let options = data.options();
 
-                let result_width = if options.mirror_x { width * 2 } else { width };
-                let result_height = if options.mirror_y { height * 2 } else { height };
+                let result_width = data.result_width();
+                let result_height = data.result_height();
 
                 for _ in 0..100 {
                     results.push((
@@ -260,6 +260,22 @@ impl AppState {
         (self.size_x * MAX_GRID_SIZE as f64).floor().max(1.0) as usize
     }
 
+    pub fn result_width(&self) -> usize {
+        if self.mirror_x {
+            self.width() * 2
+        } else {
+            self.width()
+        }
+    }
+
+    pub fn result_height(&self) -> usize {
+        if self.mirror_y {
+            self.height() * 2
+        } else {
+            self.height()
+        }
+    }
+
     pub fn height(&self) -> usize {
         (self.size_y * MAX_GRID_SIZE as f64).floor().max(1.0) as usize
     }
@@ -380,7 +396,9 @@ impl AppDelegate<AppState> for Delegate {
 
 fn copy_to_clipboard(data: &AppState) {
     let string = format!(
-        "let options = Options::{}\n[{}]",
+        "let (width, height, options) = ({}, {}, {:?});\nlet data = [{}];",
+        data.width(),
+        data.height(),
         data.options(),
         GRID.read()
             .unwrap()
@@ -391,7 +409,8 @@ fn copy_to_clipboard(data: &AppState) {
             .join(", ")
     );
 
-    dbg!(string);
+    let mut clipboard = Application::clipboard();
+    clipboard.put_string(string);
 }
 
 fn ui_builder() -> impl Widget<AppState> {
