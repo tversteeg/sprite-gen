@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 use sprite_gen::MaskValue;
 use std::fs::File;
 
+const BOX_SIZE: f64 = 100.0;
+const LABEL_SIZE: f64 = 200.0;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Encoded {
     pub state: AppState,
@@ -109,46 +112,120 @@ fn copy_to_clipboard(data: &AppState) {
 }
 
 fn ui_builder() -> impl Widget<AppState> {
-    let fill_type = LensWrap::new(
-        RadioGroup::new(vec![
-            ("Solid", MaskValue::Solid.i8()),
-            ("Empty", MaskValue::Empty.i8()),
-            ("Body 1", MaskValue::Body1.i8()),
-            ("Body 2", MaskValue::Body2.i8()),
-        ]),
-        AppState::fill_type,
-    );
-    let size_x = LensWrap::new(Slider::new(), AppState::size_x);
-    let size_x_label =
-        Label::new(|data: &AppState, _env: &_| format!("x pixels: {}", data.width()));
-    let size_y = LensWrap::new(Slider::new(), AppState::size_y);
-    let size_y_label =
-        Label::new(|data: &AppState, _env: &_| format!("y pixels: {}", data.height()));
-    let scale = LensWrap::new(Slider::new(), AppState::render_scale);
-    let scale_label =
-        Label::new(|data: &AppState, _env: &_| format!("render scale: {}", data.scale()));
+    let edit_box = {
+        let fill_type = LensWrap::new(
+            RadioGroup::new(vec![
+                ("Solid", MaskValue::Solid.i8()),
+                ("Empty", MaskValue::Empty.i8()),
+                ("Body 1", MaskValue::Body1.i8()),
+                ("Body 2", MaskValue::Body2.i8()),
+            ]),
+            AppState::fill_type,
+        );
+
+        let size_x = LensWrap::new(Slider::new(), AppState::size_x);
+        let size_x_label =
+            Label::new(|data: &AppState, _env: &_| format!("X Pixels: {}", data.width()));
+        let size_y = LensWrap::new(Slider::new(), AppState::size_y);
+        let size_y_label =
+            Label::new(|data: &AppState, _env: &_| format!("Y Pixels: {}", data.height()));
+        let scale = LensWrap::new(Slider::new(), AppState::render_scale);
+        let scale_label =
+            Label::new(|data: &AppState, _env: &_| format!("Render Scale: {}", data.scale()));
+
+        let right_box = Flex::column()
+            .with_child(
+                Flex::row()
+                    .with_child(size_x.padding(5.0), 1.0)
+                    .with_child(size_x_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(size_y.padding(5.0), 1.0)
+                    .with_child(size_y_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(scale.padding(5.0), 1.0)
+                    .with_child(scale_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            );
+
+        Flex::row()
+            .with_child(fill_type.fix_width(BOX_SIZE), 0.0)
+            .with_child(right_box, 1.0)
+    };
 
     let options_box = {
+        let colored = LensWrap::new(Checkbox::new(), AppState::colored);
         let mirror_x = LensWrap::new(Checkbox::new(), AppState::mirror_x);
-        let mirror_x_label = Label::new("Mirror X");
         let mirror_y = LensWrap::new(Checkbox::new(), AppState::mirror_y);
-        let mirror_y_label = Label::new("Mirror Y");
-        Padding::new(
-            20.0,
-            Flex::column()
-                .with_child(
-                    Flex::row()
-                        .with_child(Padding::new(5.0, mirror_x), 0.0)
-                        .with_child(Padding::new(5.0, mirror_x_label), 1.0),
-                    0.0,
-                )
-                .with_child(
-                    Flex::row()
-                        .with_child(Padding::new(5.0, mirror_y), 0.0)
-                        .with_child(Padding::new(5.0, mirror_y_label), 1.0),
-                    0.0,
-                ),
-        )
+        let left_box = Flex::column()
+            .with_child(
+                Flex::row()
+                    .with_child(colored.padding(5.0), 0.0)
+                    .with_child(Label::new("Colored").padding(5.0), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(mirror_x.padding(5.0), 0.0)
+                    .with_child(Label::new("Mirror X").padding(5.0), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(mirror_y.padding(5.0), 0.0)
+                    .with_child(Label::new("Mirror Y").padding(5.0), 0.0),
+                0.0,
+            );
+
+        let edge_brightness = LensWrap::new(Slider::new(), AppState::edge_brightness);
+        let edge_brightness_label = Label::new(|data: &AppState, _env: &_| {
+            format!("Edge Brightness: {:.2}", data.edge_brightness)
+        });
+        let color_variations = LensWrap::new(Slider::new(), AppState::color_variations);
+        let color_variations_label = Label::new(|data: &AppState, _env: &_| {
+            format!("Color Variations: {:.2}", data.color_variations)
+        });
+        let brightness_noise = LensWrap::new(Slider::new(), AppState::brightness_noise);
+        let brightness_noise_label = Label::new(|data: &AppState, _env: &_| {
+            format!("Brightness Noise: {:.2}", data.brightness_noise)
+        });
+        let saturation = LensWrap::new(Slider::new(), AppState::saturation);
+        let saturation_label =
+            Label::new(|data: &AppState, _env: &_| format!("Saturation: {:.2}", data.saturation));
+        let right_box = Flex::column()
+            .with_child(
+                Flex::row()
+                    .with_child(edge_brightness.padding(5.0), 1.0)
+                    .with_child(edge_brightness_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(color_variations.padding(5.0), 1.0)
+                    .with_child(color_variations_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(brightness_noise.padding(5.0), 1.0)
+                    .with_child(brightness_noise_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(saturation.padding(5.0), 1.0)
+                    .with_child(saturation_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            );
+
+        Flex::row()
+            .with_child(left_box.fix_width(BOX_SIZE), 0.0)
+            .with_child(right_box, 1.0)
     };
 
     let copy_to_clipboard_button = Button::new("Copy to clipboard", |_ctx, data, _env| {
@@ -157,27 +234,21 @@ fn ui_builder() -> impl Widget<AppState> {
 
     Flex::column()
         .with_child(
-            Padding::new(
-                5.0,
-                Flex::row()
-                    .with_child(Padding::new(20.0, GridWidget::new_centered()), 1.0)
-                    .with_child(
-                        Flex::column()
-                            .with_child(Padding::new(5.0, fill_type), 0.0)
-                            .with_child(Padding::new(5.0, size_x), 0.0)
-                            .with_child(size_x_label, 0.0)
-                            .with_child(Padding::new(5.0, size_y), 0.0)
-                            .with_child(size_y_label, 0.0)
-                            .with_child(Padding::new(5.0, scale), 0.0)
-                            .with_child(scale_label, 0.0)
-                            .with_child(options_box, 1.0)
-                            .with_child(Padding::new(5.0, copy_to_clipboard_button), 0.0),
-                        1.0,
-                    ),
-            ),
+            Flex::row()
+                .with_child(GridWidget::new_centered().padding(20.0), 1.0)
+                .with_child(
+                    Flex::column()
+                        .with_child(Label::new("Edit").padding(5.0), 0.0)
+                        .with_child(edit_box, 1.0)
+                        .with_child(Label::new("Options").padding(5.0), 0.0)
+                        .with_child(options_box, 1.0)
+                        .with_child(copy_to_clipboard_button.padding(5.0), 0.0),
+                    1.0,
+                )
+                .padding(5.0),
             1.0,
         )
-        .with_child(Padding::new(20.0, ResultWidget::new_centered()), 0.5)
+        .with_child(ResultWidget::new_centered().padding(20.0), 0.5)
 }
 
 fn main_menu_builder<T: Data>() -> MenuDesc<T> {

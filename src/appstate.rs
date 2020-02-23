@@ -24,8 +24,13 @@ pub struct AppState {
     pub size_x: f64,
     pub size_y: f64,
     pub render_scale: f64,
+    pub edge_brightness: f64,
+    pub color_variations: f64,
+    pub brightness_noise: f64,
+    pub saturation: f64,
     pub mirror_x: bool,
     pub mirror_y: bool,
+    pub colored: bool,
     pub file_path: Option<String>,
 }
 
@@ -70,7 +75,11 @@ impl AppState {
         Options {
             mirror_x: self.mirror_x,
             mirror_y: self.mirror_y,
-            ..Default::default()
+            edge_brightness: self.edge_brightness,
+            color_variations: self.color_variations + 0.01,
+            brightness_noise: self.brightness_noise,
+            saturation: self.saturation,
+            colored: self.colored,
         }
     }
 
@@ -99,6 +108,11 @@ impl Default for AppState {
             size_x: 0.05,
             size_y: 0.05,
             render_scale: 0.2,
+            edge_brightness: 0.3,
+            color_variations: 0.2,
+            brightness_noise: 0.3,
+            saturation: 0.5,
+            colored: true,
             mirror_x: true,
             mirror_y: false,
             file_path: None,

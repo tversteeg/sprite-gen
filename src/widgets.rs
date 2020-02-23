@@ -186,10 +186,16 @@ impl Widget<AppState> for ResultWidget {
         // Make the background white
 
         // Render the results
-        let mut x = 0;
-        let mut y = 0;
+        let mut x = 0.0;
+        let mut y = 0.0;
         for (width, height, result) in RESULTS.read().unwrap().iter() {
             let size = Size::new((width * scale) as f64, (height * scale) as f64);
+
+            // Don't render results that fall outside of the box
+            let canvas_size = paint_ctx.size();
+            if x + size.width > canvas_size.width || y + size.height > canvas_size.height {
+                continue;
+            }
 
             let image = paint_ctx
                 .make_image(*width, *height, &result, ImageFormat::Rgb)
@@ -197,14 +203,14 @@ impl Widget<AppState> for ResultWidget {
             // The image is automatically scaled to fit the rect you pass to draw_image
             paint_ctx.draw_image(
                 &image,
-                Rect::from_origin_size(Point::new(x as f64, y as f64), size),
+                Rect::from_origin_size(Point::new(x, y), size),
                 InterpolationMode::NearestNeighbor,
             );
 
-            x += width * scale + padding;
-            if x as f64 + size.width > ctx_size.width {
-                x = 0;
-                y += height * scale + padding;
+            x += (width * scale + padding) as f64;
+            if x + size.width > ctx_size.width {
+                x = 0.0;
+                y += (height * scale + padding) as f64;
             }
         }
     }
