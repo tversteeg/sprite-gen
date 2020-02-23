@@ -65,7 +65,26 @@ impl AppDelegate<AppState> for Delegate {
                             grid: data.pixels().into_iter().map(|p| p.i8()).collect::<_>(),
                         },
                     )
-                    .unwrap();
+                    .expect("Could not serialize or write to save file");
+
+                    None
+                }
+                OPEN_FILE => {
+                    if let Some(file_info) = cmd.get_object::<FileInfo>() {
+                        data.file_path = Some(file_info.path().to_str().unwrap().to_string());
+                    }
+
+                    if data.file_path == None {
+                        // There's no path yet, do nothing
+                        return None;
+                    }
+
+                    let decoded: Encoded = bincode::deserialize_from(
+                        File::open(data.file_path.as_ref().unwrap()).unwrap(),
+                    )
+                    .expect("Could not deserialize or open file");
+
+                    *data = decoded.state;
 
                     None
                 }
