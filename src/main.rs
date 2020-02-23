@@ -225,7 +225,11 @@ fn ui_builder() -> impl Widget<AppState> {
 
         Flex::row()
             .with_child(left_box.fix_width(BOX_SIZE), 0.0)
-            .with_child(right_box, 1.0)
+            .with_child(
+                // Let the color options rendering state depend on the colored boolean
+                Either::new(|data, _env| data.colored, right_box, SizedBox::empty()),
+                1.0,
+            )
     };
 
     let copy_to_clipboard_button = Button::new("Copy to clipboard", |_ctx, data, _env| {
