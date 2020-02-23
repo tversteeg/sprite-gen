@@ -19,21 +19,62 @@ impl GridWidget {
     }
 }
 
+impl GridWidget {
+    fn draw_pixel(&mut self, size: Size, mouse: &MouseEvent, data: &AppState) -> bool {
+        let block_size = data.block_size(&size);
+
+        let index_x = (mouse.pos.x / block_size.width).floor() as usize;
+        let index_y = (mouse.pos.y / block_size.height).floor() as usize;
+
+        let mut grid = GRID.write().unwrap();
+        let offset = index_y * MAX_GRID_SIZE + index_x;
+
+        let new = From::from(data.fill_type);
+        if grid[offset] != new {
+            // If it's another type of pixel overwrite it
+            grid[offset] = new;
+
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl Widget<AppState> for GridWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
-        if let Event::MouseDown(mouse) = event {
-            let size = ctx.size();
-            let block_size = data.block_size(&size);
+        match event {
+            Event::MouseDown(mouse) => {
+                ctx.set_active(true);
 
-            let index_x = (mouse.pos.x / block_size.width).floor() as usize;
-            let index_y = (mouse.pos.y / block_size.height).floor() as usize;
+                if self.draw_pixel(ctx.size(), mouse, &data) {
+                    ctx.submit_command(RECALCULATE_SPRITES, None);
 
-            GRID.write().unwrap()[index_y * MAX_GRID_SIZE + index_x] = From::from(data.fill_type);
+                    // Force a redraw of the grid
+                    ctx.invalidate();
+                }
+            }
+            Event::MouseUp(mouse) => {
+                if ctx.is_active() {
+                    ctx.set_active(false);
 
-            ctx.submit_command(RECALCULATE_SPRITES, None);
+                    if self.draw_pixel(ctx.size(), mouse, &data) {
+                        ctx.submit_command(RECALCULATE_SPRITES, None);
 
-            // Force a redraw of the grid
-            ctx.invalidate();
+                        ctx.invalidate();
+                    }
+                }
+            }
+            Event::MouseMoved(mouse) => {
+                if ctx.is_active() {
+                    if self.draw_pixel(ctx.size(), mouse, &data) {
+                        ctx.submit_command(RECALCULATE_SPRITES, None);
+
+                        ctx.invalidate();
+                    }
+                }
+            }
+            _ => (),
         }
     }
 
