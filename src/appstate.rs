@@ -77,7 +77,7 @@ impl AppState {
             mirror_y: self.mirror_y,
             edge_brightness: self.edge_brightness,
             color_variations: self.color_variations + 0.01,
-            brightness_noise: self.brightness_noise,
+            brightness_noise: self.brightness_noise + 0.01,
             saturation: self.saturation,
             colored: self.colored,
         }
