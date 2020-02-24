@@ -66,12 +66,10 @@ impl Widget<AppState> for GridWidget {
                 }
             }
             Event::MouseMoved(mouse) => {
-                if ctx.is_active() {
-                    if self.draw_pixel(ctx.size(), mouse, &data) {
-                        ctx.submit_command(RECALCULATE_SPRITES, None);
+                if ctx.is_active() && self.draw_pixel(ctx.size(), mouse, &data) {
+                    ctx.submit_command(RECALCULATE_SPRITES, None);
 
-                        ctx.invalidate();
-                    }
+                    ctx.invalidate();
                 }
             }
             _ => (),
