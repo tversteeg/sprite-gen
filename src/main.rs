@@ -151,6 +151,9 @@ fn ui_builder() -> impl Widget<AppState> {
         let scale = LensWrap::new(Slider::new(), AppState::render_scale);
         let scale_label =
             Label::new(|data: &AppState, _env: &_| format!("Render Scale: {}", data.scale()));
+        let results_amount = LensWrap::new(Slider::new(), AppState::results_amount);
+        let results_amount_label =
+            Label::new(|data: &AppState, _env: &_| format!("Results: {}", data.results()));
 
         let right_box = Flex::column()
             .with_child(
@@ -169,6 +172,12 @@ fn ui_builder() -> impl Widget<AppState> {
                 Flex::row()
                     .with_child(scale.padding(5.0), 1.0)
                     .with_child(scale_label.fix_width(LABEL_SIZE), 0.0),
+                0.0,
+            )
+            .with_child(
+                Flex::row()
+                    .with_child(results_amount.padding(5.0), 1.0)
+                    .with_child(results_amount_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             );
 

@@ -139,36 +139,16 @@ impl Widget<AppState> for ResultWidget {
         if let Event::Command(cmd) = event {
             if cmd.selector == RECALCULATE_SPRITES {
                 // Generate new sprites
-
                 let width = data.width();
-                let height = data.height();
-
-                // Copy the mask
-                let mask = {
-                    let grid = GRID.read().unwrap();
-
-                    let mut new = vec![MaskValue::default(); width * height];
-
-                    for y_pixels in 0..height {
-                        for x_pixels in 0..width {
-                            new[y_pixels * width + x_pixels] =
-                                grid[y_pixels * MAX_GRID_SIZE + x_pixels].clone();
-                        }
-                    }
-
-                    new
-                };
-
-                let mut results = RESULTS.write().unwrap();
-
-                results.clear();
-
+                let mask = data.pixels();
                 let options = data.options();
-
                 let result_width = data.result_width();
                 let result_height = data.result_height();
 
-                for _ in 0..100 {
+                let mut results = RESULTS.write().unwrap();
+                results.clear();
+
+                for _ in 0..data.results() {
                     results.push((
                         result_width,
                         result_height,
@@ -220,12 +200,11 @@ impl Widget<AppState> for ResultWidget {
 
         paint_ctx.stroke(rect, &env.get(theme::BORDER_LIGHT), 2.0);
 
+        // Make the background white
         paint_ctx.fill(rect, &MaskValue::Empty.color());
 
         let scale = data.scale();
         let padding = 4;
-
-        // Make the background white
 
         // Render the results
         let mut x = 0.0;

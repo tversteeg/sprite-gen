@@ -10,6 +10,7 @@ use sprite_gen::{MaskValue, Options};
 use std::sync::RwLock;
 
 pub const MAX_GRID_SIZE: usize = 128;
+pub const MAX_RESULTS: usize = 1000;
 pub const MAX_SCALE: usize = 32;
 
 lazy_static! {
@@ -20,6 +21,7 @@ lazy_static! {
 
 #[derive(Debug, Clone, PartialEq, Data, Lens, Serialize, Deserialize)]
 pub struct AppState {
+    pub results_amount: f64,
     pub fill_type: i8,
     pub size_x: f64,
     pub size_y: f64,
@@ -41,6 +43,10 @@ impl AppState {
             total_area.width / self.width() as f64,
             total_area.height / self.height() as f64,
         )
+    }
+
+    pub fn results(&self) -> usize {
+        (self.results_amount * MAX_RESULTS as f64).floor().max(1.0) as usize
     }
 
     pub fn width(&self) -> usize {
@@ -105,6 +111,7 @@ impl AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            results_amount: 0.1,
             size_x: 0.05,
             size_y: 0.05,
             render_scale: 0.2,
