@@ -21,6 +21,11 @@ impl GridWidget {
 
 impl GridWidget {
     fn draw_pixel(&mut self, size: Size, mouse: &MouseEvent, data: &AppState) -> bool {
+        // Ignore out of bounds drawing
+        if mouse.pos.x < 0.0 || mouse.pos.y < 0.0 {
+            return false;
+        }
+
         let block_size = data.block_size(&size);
 
         let index_x = (mouse.pos.x / block_size.width).floor() as usize;
@@ -59,16 +64,14 @@ impl Widget<AppState> for GridWidget {
                     ctx.set_active(false);
 
                     if self.draw_pixel(ctx.size(), mouse, &data) {
-                        ctx.submit_command(RECALCULATE_SPRITES, None);
-
                         ctx.invalidate();
                     }
+
+                    ctx.submit_command(RECALCULATE_SPRITES, None);
                 }
             }
             Event::MouseMoved(mouse) => {
                 if ctx.is_active() && self.draw_pixel(ctx.size(), mouse, &data) {
-                    ctx.submit_command(RECALCULATE_SPRITES, None);
-
                     ctx.invalidate();
                 }
             }
