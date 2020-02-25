@@ -4,7 +4,7 @@ extern crate hsl;
 extern crate rand;
 
 use hsl::HSL;
-use rand::{Rng, XorShiftRng};
+use rand::prelude::*;
 
 /// Replacement for the `i8` datatype that can be passed to `gen_sprite`.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -122,17 +122,17 @@ where
         .map(|v| std::convert::Into::into(v.clone()))
         .collect::<_>();
 
-    let mut rng: XorShiftRng = rand::thread_rng().gen();
+    let mut rng = rand::thread_rng();
 
     // Generate a random sample, if it's a internal body there is a 50% chance it will be empty
     // If it's a regular body there is a 50% chance it will turn into a border
     for val in mask.iter_mut() {
         if *val == 1 {
             // Either 0 or 1
-            *val = rng.next_f32().round() as i8;
+            *val = rng.gen::<f32>().round() as i8;
         } else if *val == 2 {
             // Either -1 or 1
-            *val = (rng.next_f32().round() as i8) * 2 - 1;
+            *val = (rng.gen::<f32>().round() as i8) * 2 - 1;
         }
     }
 
@@ -249,13 +249,13 @@ fn color_output(
     mask: &[i8],
     mask_size: (usize, usize),
     options: &Options,
-    rng: &mut XorShiftRng,
+    rng: &mut ThreadRng,
 ) -> Vec<u32> {
     let mut result = vec![0xFF_FF_FF_FF; mask.len()];
 
-    let is_vertical_gradient = rng.next_f32() > 0.5;
-    let saturation = (rng.next_f64() * options.saturation).max(0.0).min(1.0);
-    let mut hue = rng.next_f64();
+    let is_vertical_gradient = rng.gen::<f32>() > 0.5;
+    let saturation = (rng.gen::<f64>() * options.saturation).max(0.0).min(1.0);
+    let mut hue = rng.gen::<f64>();
 
     let variation_check = 1.0 - options.color_variations;
     let brightness_inv = 1.0 - options.brightness_noise;
@@ -273,7 +273,7 @@ fn color_output(
                 .abs();
 
         if is_new_color > variation_check {
-            hue = rng.next_f64();
+            hue = rng.gen::<f64>();
         }
 
         for v in 0..uv_size.1 {
