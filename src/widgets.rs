@@ -56,7 +56,7 @@ impl Widget<AppState> for GridWidget {
                     ctx.submit_command(RECALCULATE_SPRITES, None);
 
                     // Force a redraw of the grid
-                    ctx.invalidate();
+                    ctx.request_paint();
                 }
             }
             Event::MouseUp(mouse) => {
@@ -64,7 +64,7 @@ impl Widget<AppState> for GridWidget {
                     ctx.set_active(false);
 
                     if self.draw_pixel(ctx.size(), mouse, &data) {
-                        ctx.invalidate();
+                        ctx.request_paint();
                     }
 
                     ctx.submit_command(RECALCULATE_SPRITES, None);
@@ -72,17 +72,20 @@ impl Widget<AppState> for GridWidget {
             }
             Event::MouseMoved(mouse) => {
                 if ctx.is_active() && self.draw_pixel(ctx.size(), mouse, &data) {
-                    ctx.invalidate();
+                    ctx.request_paint();
                 }
             }
             _ => (),
         }
     }
 
-    fn update(
+    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &AppState, _data: &AppState, _env: &Env) {
+    }
+
+    fn lifecycle(
         &mut self,
-        _ctx: &mut UpdateCtx,
-        _old_data: Option<&AppState>,
+        _ctx: &mut LifeCycleCtx,
+        _event: &LifeCycle,
         _data: &AppState,
         _env: &Env,
     ) {
@@ -167,15 +170,18 @@ impl Widget<AppState> for ResultWidget {
                     ));
                 }
 
-                ctx.invalidate();
+                ctx.request_paint();
             }
         }
     }
 
-    fn update(
+    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &AppState, _data: &AppState, _env: &Env) {
+    }
+
+    fn lifecycle(
         &mut self,
-        _ctx: &mut UpdateCtx,
-        _old_data: Option<&AppState>,
+        _ctx: &mut LifeCycleCtx,
+        _event: &LifeCycle,
         _data: &AppState,
         _env: &Env,
     ) {

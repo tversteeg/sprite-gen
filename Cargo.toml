@@ -19,12 +19,12 @@ travis-ci = {repository = "tversteeg/sprite-gen"}
 [workspace]
 
 [dependencies]
-anyhow = "1.0.26"
-druid = "0.4.0"
+anyhow = "1.0.27"
+druid = { git = "https://github.com/xi-editor/druid.git", version = "0.5" }
 sprite-gen = { path = "lib", version = "0.1.5" }
 lazy_static = "1.4.0"
 bincode = "1.2.1"
-serde = { version = "1.0.104", features = ["derive"] }
+serde = { version = "1.0.105", features = ["derive"] }
 itertools = "0.9.0"
 
 [[example]]
@@ -33,5 +33,5 @@ path = "examples/minifb.rs"
 
 [dev-dependencies]
 sprite-gen = { path = "lib", version = "0.1.5" }
-blit = "0.5.9"
+blit = "0.5.12"
 minifb = "0.15.3"

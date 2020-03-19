@@ -26,10 +26,11 @@ struct Delegate {}
 impl AppDelegate<AppState> for Delegate {
     fn event(
         &mut self,
+        _ctx: &mut DelegateCtx,
+        _window_id: WindowId,
         event: Event,
         data: &mut AppState,
         _env: &Env,
-        _ctx: &mut DelegateCtx,
     ) -> Option<Event> {
         match event {
             Event::Command(cmd) => match cmd.selector {
@@ -47,7 +48,7 @@ impl AppDelegate<AppState> for Delegate {
                 }
                 SAVE_FILE => {
                     // Get the file path from the Save As menu if applicable
-                    if let Some(file_info) = cmd.get_object::<FileInfo>() {
+                    if let Ok(file_info) = cmd.get_object::<FileInfo>() {
                         data.file_path = Some(file_info.path().to_str().unwrap().to_string());
                     }
 
@@ -70,7 +71,7 @@ impl AppDelegate<AppState> for Delegate {
                     None
                 }
                 OPEN_FILE => {
-                    if let Some(file_info) = cmd.get_object::<FileInfo>() {
+                    if let Ok(file_info) = cmd.get_object::<FileInfo>() {
                         data.file_path = Some(file_info.path().to_str().unwrap().to_string());
                     }
 
@@ -187,28 +188,13 @@ fn ui_builder() -> impl Widget<AppState> {
     };
 
     let options_box = {
-        let colored = LensWrap::new(Checkbox::new(), AppState::colored);
-        let mirror_x = LensWrap::new(Checkbox::new(), AppState::mirror_x);
-        let mirror_y = LensWrap::new(Checkbox::new(), AppState::mirror_y);
+        let colored = LensWrap::new(Checkbox::new("Colored"), AppState::colored);
+        let mirror_x = LensWrap::new(Checkbox::new("Mirror X"), AppState::mirror_x);
+        let mirror_y = LensWrap::new(Checkbox::new("Mirror Y"), AppState::mirror_y);
         let left_box = Flex::column()
-            .with_child(
-                Flex::row()
-                    .with_child(colored.padding(5.0), 0.0)
-                    .with_child(Label::new("Colored").padding(5.0), 0.0),
-                0.0,
-            )
-            .with_child(
-                Flex::row()
-                    .with_child(mirror_x.padding(5.0), 0.0)
-                    .with_child(Label::new("Mirror X").padding(5.0), 0.0),
-                0.0,
-            )
-            .with_child(
-                Flex::row()
-                    .with_child(mirror_y.padding(5.0), 0.0)
-                    .with_child(Label::new("Mirror Y").padding(5.0), 0.0),
-                0.0,
-            );
+            .with_child(colored.padding(5.0), 0.0)
+            .with_child(mirror_x.padding(5.0), 0.0)
+            .with_child(mirror_y.padding(5.0), 0.0);
 
         let edge_brightness = LensWrap::new(Slider::new(), AppState::edge_brightness);
         let edge_brightness_label = Label::new(|data: &AppState, _env: &_| {
