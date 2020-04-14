@@ -1,9 +1,6 @@
 use druid::kurbo::*;
-use druid::lens::Lens;
 use druid::piet::*;
-
 use druid::*;
-
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use sprite_gen::{MaskValue, Options};
@@ -38,11 +35,8 @@ pub struct AppState {
 
 impl AppState {
     // Size of each grid block
-    pub fn block_size(&self, total_area: &Size) -> Size {
-        Size::new(
-            total_area.width / self.width() as f64,
-            total_area.height / self.height() as f64,
-        )
+    pub fn block_size(&self, total_area: &Size) -> f64 {
+        (total_area.width / self.width() as f64).min(total_area.height / self.height() as f64)
     }
 
     pub fn results(&self) -> usize {
@@ -112,8 +106,8 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             results_amount: 0.1,
-            size_x: 0.05,
-            size_y: 0.05,
+            size_x: 0.105,
+            size_y: 0.08,
             render_scale: 0.2,
             edge_brightness: 0.3,
             color_variations: 0.2,

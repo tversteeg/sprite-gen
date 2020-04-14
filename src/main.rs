@@ -91,7 +91,6 @@ impl AppDelegate<AppState> for Delegate {
                 }
                 _ => Some(Event::Command(cmd)),
             },
-
             other => Some(other),
         }
     }
@@ -132,6 +131,30 @@ fn copy_to_clipboard(data: &AppState) {
 }
 
 fn ui_builder() -> impl Widget<AppState> {
+    let menu_bar = {
+        Flex::row()
+            .with_child(
+                Button::new("New")
+                    .on_click(|ctx, _data, _env| ctx.submit_command(NEW_FILE, None))
+                    .padding(5.0),
+            )
+            .with_child(
+                Button::new("Open")
+                    .on_click(|ctx, _data, _env| ctx.submit_command(SHOW_OPEN_PANEL, None))
+                    .padding(5.0),
+            )
+            .with_child(
+                Button::new("Save")
+                    .on_click(|ctx, _data, _env| ctx.submit_command(SHOW_SAVE_PANEL, None))
+                    .padding(5.0),
+            )
+            .with_child(
+                Button::new("Copy to clipboard")
+                    .on_click(|_ctx, data, _env| copy_to_clipboard(data))
+                    .padding(5.0),
+            )
+    };
+
     let edit_box = {
         let fill_type = LensWrap::new(
             RadioGroup::new(vec![
@@ -157,34 +180,34 @@ fn ui_builder() -> impl Widget<AppState> {
             Label::new(|data: &AppState, _env: &_| format!("Results: {}", data.results()));
 
         let right_box = Flex::column()
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(size_x.padding(5.0), 1.0)
-                    .with_child(size_x_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(size_x.padding(5.0), 1.0)
+                    .with_flex_child(size_x_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             )
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(size_y.padding(5.0), 1.0)
-                    .with_child(size_y_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(size_y.padding(5.0), 1.0)
+                    .with_flex_child(size_y_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             )
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(scale.padding(5.0), 1.0)
-                    .with_child(scale_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(scale.padding(5.0), 1.0)
+                    .with_flex_child(scale_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             )
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(results_amount.padding(5.0), 1.0)
-                    .with_child(results_amount_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(results_amount.padding(5.0), 1.0)
+                    .with_flex_child(results_amount_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             );
 
         Flex::row()
-            .with_child(fill_type.fix_width(BOX_SIZE), 0.0)
-            .with_child(right_box, 1.0)
+            .with_flex_child(fill_type.fix_width(BOX_SIZE), 0.0)
+            .with_flex_child(right_box, 1.0)
     };
 
     let options_box = {
@@ -192,9 +215,9 @@ fn ui_builder() -> impl Widget<AppState> {
         let mirror_x = LensWrap::new(Checkbox::new("Mirror X"), AppState::mirror_x);
         let mirror_y = LensWrap::new(Checkbox::new("Mirror Y"), AppState::mirror_y);
         let left_box = Flex::column()
-            .with_child(colored.padding(5.0), 0.0)
-            .with_child(mirror_x.padding(5.0), 0.0)
-            .with_child(mirror_y.padding(5.0), 0.0);
+            .with_flex_child(colored.padding(5.0), 0.0)
+            .with_flex_child(mirror_x.padding(5.0), 0.0)
+            .with_flex_child(mirror_y.padding(5.0), 0.0);
 
         let edge_brightness = LensWrap::new(Slider::new(), AppState::edge_brightness);
         let edge_brightness_label = Label::new(|data: &AppState, _env: &_| {
@@ -212,81 +235,61 @@ fn ui_builder() -> impl Widget<AppState> {
         let saturation_label =
             Label::new(|data: &AppState, _env: &_| format!("Saturation: {:.2}", data.saturation));
         let right_box = Flex::column()
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(edge_brightness.padding(5.0), 1.0)
-                    .with_child(edge_brightness_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(edge_brightness.padding(5.0), 1.0)
+                    .with_flex_child(edge_brightness_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             )
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(color_variations.padding(5.0), 1.0)
-                    .with_child(color_variations_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(color_variations.padding(5.0), 1.0)
+                    .with_flex_child(color_variations_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             )
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(brightness_noise.padding(5.0), 1.0)
-                    .with_child(brightness_noise_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(brightness_noise.padding(5.0), 1.0)
+                    .with_flex_child(brightness_noise_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             )
-            .with_child(
+            .with_flex_child(
                 Flex::row()
-                    .with_child(saturation.padding(5.0), 1.0)
-                    .with_child(saturation_label.fix_width(LABEL_SIZE), 0.0),
+                    .with_flex_child(saturation.padding(5.0), 1.0)
+                    .with_flex_child(saturation_label.fix_width(LABEL_SIZE), 0.0),
                 0.0,
             );
 
         Flex::row()
-            .with_child(left_box.fix_width(BOX_SIZE), 0.0)
-            .with_child(
+            .with_flex_child(left_box.fix_width(BOX_SIZE), 0.0)
+            .with_flex_child(
                 // Let the color options rendering state depend on the colored boolean
                 Either::new(|data, _env| data.colored, right_box, SizedBox::empty()),
                 1.0,
             )
     };
 
-    let copy_to_clipboard_button = Button::new("Copy to clipboard", |_ctx, data, _env| {
-        copy_to_clipboard(data)
-    });
-
     Flex::column()
-        .with_child(
+        .with_child(menu_bar.padding(5.0))
+        .with_flex_child(
             Flex::row()
-                .with_child(GridWidget::new_centered().padding(20.0), 1.0)
-                .with_child(
+                .with_flex_child(GridWidget::new_centered().padding(20.0), 1.0)
+                .with_flex_child(
                     Flex::column()
-                        .with_child(Label::new("Edit").padding(5.0), 0.0)
-                        .with_child(edit_box, 1.0)
-                        .with_child(Label::new("Options").padding(5.0), 0.0)
-                        .with_child(options_box, 1.0)
-                        .with_child(copy_to_clipboard_button.padding(5.0), 0.0),
+                        .with_flex_child(Label::new("Edit").padding(5.0), 0.0)
+                        .with_flex_child(edit_box, 1.0)
+                        .with_flex_child(Label::new("Options").padding(5.0), 0.0)
+                        .with_flex_child(options_box, 1.0),
                     1.0,
                 )
                 .padding(5.0),
             1.0,
         )
-        .with_child(ResultWidget::new_centered().padding(20.0), 0.5)
-}
-
-fn main_menu_builder<T: Data>() -> MenuDesc<T> {
-    let mut base = MenuDesc::empty();
-    #[cfg(target_os = "macos")]
-    {
-        base = druid::platform_menus::mac::menu_bar();
-    }
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    {
-        base = base.append(druid::platform_menus::win::file::default());
-    }
-
-    base
+        .with_flex_child(ResultWidget::new_centered().padding(20.0), 0.5)
 }
 
 fn main() -> Result<()> {
-    let main_window = WindowDesc::new(ui_builder)
-        .title(LocalizedString::new("Sprite"))
-        .menu(main_menu_builder());
+    let main_window = WindowDesc::new(ui_builder).title(LocalizedString::new("Sprite"));
 
     let data = AppState::default();
 

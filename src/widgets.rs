@@ -1,11 +1,8 @@
 use crate::appstate::*;
-
 use druid::kurbo::*;
-
 use druid::piet::*;
 use druid::widget::*;
 use druid::*;
-
 use sprite_gen::{gen_sprite, MaskValue};
 use std::convert::From;
 
@@ -28,8 +25,8 @@ impl GridWidget {
 
         let block_size = data.block_size(&size);
 
-        let index_x = (mouse.pos.x / block_size.width).floor() as usize;
-        let index_y = (mouse.pos.y / block_size.height).floor() as usize;
+        let index_x = (mouse.pos.x / block_size).floor() as usize;
+        let index_y = (mouse.pos.y / block_size).floor() as usize;
 
         let mut grid = GRID.write().unwrap();
         let offset = index_y * MAX_GRID_SIZE + index_x;
@@ -70,7 +67,7 @@ impl Widget<AppState> for GridWidget {
                     ctx.submit_command(RECALCULATE_SPRITES, None);
                 }
             }
-            Event::MouseMoved(mouse) => {
+            Event::MouseMove(mouse) => {
                 if ctx.is_active() && self.draw_pixel(ctx.size(), mouse, &data) {
                     ctx.request_paint();
                 }
@@ -112,12 +109,9 @@ impl Widget<AppState> for GridWidget {
 
         for y_pixels in 0..data.height() {
             for x_pixels in 0..data.width() {
-                let offset = Point::new(
-                    x_pixels as f64 * block_size.width,
-                    y_pixels as f64 * block_size.height,
-                );
+                let offset = Point::new(x_pixels as f64 * block_size, y_pixels as f64 * block_size);
 
-                let rect = Rect::from_origin_size(offset, block_size);
+                let rect = Rect::from_origin_size(offset, Size::new(block_size, block_size));
 
                 let color = grid[x_pixels + y_pixels * MAX_GRID_SIZE].color();
 
