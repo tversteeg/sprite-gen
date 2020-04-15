@@ -1,9 +1,10 @@
 [package]
 name = "sprite-gen"
-version = "0.1.9"
+version = "0.2.0"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 license = "GPL-3.0"
 homepage = "https://github.com/tversteeg/sprite-gen"
+edition = "2018"
 
 readme = "../README.md"
 description = "Procedurally generate pixel sprites library"
@@ -17,5 +18,12 @@ categories = ["games", "rendering", "game-engines"]
 travis-ci = {repository = "tversteeg/sprite-gen"}
 
 [dependencies]
-rand = "0.7.3"
 hsl = "0.1.1"
+randomize = "3.0.1"
+
+[dev-dependencies]
+criterion = "0.3.1"
+
+[[bench]]
+name = "bench"
+harness = false

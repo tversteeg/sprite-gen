@@ -1,10 +1,7 @@
 #![crate_name = "sprite_gen"]
 
-extern crate hsl;
-extern crate rand;
-
 use hsl::HSL;
-use rand::prelude::*;
+use randomize::{formulas, PCG32};
 
 /// Replacement for the `i8` datatype that can be passed to `gen_sprite`.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -61,16 +58,18 @@ pub struct Options {
     /// `true` if the result buffer should be mirrored along the Y axis.
     pub mirror_y: bool,
     /// `true` if the output should be colored. `false` if the output should be 1-bit. The
-    /// fields after this field only apply if `colorer` is `true`.
+    /// Fields after this field only apply if `colored` is `true`.
     pub colored: bool,
     /// A value from `0.0` - `1.0`.
-    pub edge_brightness: f64,
+    pub edge_brightness: f32,
     /// A value from `0.0` - `1.0`.
-    pub color_variations: f64,
+    pub color_variations: f32,
     /// A value from `0.0` - `1.0`.
-    pub brightness_noise: f64,
+    pub brightness_noise: f32,
     /// A value from `0.0` - `1.0`.
-    pub saturation: f64,
+    pub saturation: f32,
+    /// The seed for the random generator.
+    pub seed: u64,
 }
 
 impl Default for Options {
@@ -81,6 +80,7 @@ impl Default for Options {
     /// - `color_variations`: `0.2`
     /// - `brightness_noise`: `0.3`
     /// - `saturation`: `0.5`
+    /// - `seed`: `0`
     fn default() -> Self {
         Options {
             mirror_x: false,
@@ -90,6 +90,7 @@ impl Default for Options {
             color_variations: 0.2,
             brightness_noise: 0.3,
             saturation: 0.5,
+            seed: 0,
         }
     }
 }
@@ -122,17 +123,17 @@ where
         .map(|v| std::convert::Into::into(v.clone()))
         .collect::<_>();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = PCG32::seed(options.seed, 5);
 
     // Generate a random sample, if it's a internal body there is a 50% chance it will be empty
     // If it's a regular body there is a 50% chance it will turn into a border
     for val in mask.iter_mut() {
         if *val == 1 {
             // Either 0 or 1
-            *val = rng.gen::<f32>().round() as i8;
+            *val = formulas::f32_closed(rng.next_u32()).round() as i8;
         } else if *val == 2 {
             // Either -1 or 1
-            *val = (rng.gen::<f32>().round() as i8) * 2 - 1;
+            *val = formulas::f32_closed_neg_pos(rng.next_u32()).signum() as i8;
         }
     }
 
@@ -249,13 +250,13 @@ fn color_output(
     mask: &[i8],
     mask_size: (usize, usize),
     options: &Options,
-    rng: &mut ThreadRng,
+    rng: &mut PCG32,
 ) -> Vec<u32> {
     let mut result = vec![0xFF_FF_FF_FF; mask.len()];
 
-    let is_vertical_gradient = rng.gen::<f32>() > 0.5;
-    let saturation = (rng.gen::<f64>() * options.saturation).max(0.0).min(1.0);
-    let mut hue = rng.gen::<f64>();
+    let is_vertical_gradient = formulas::f32_closed_neg_pos(rng.next_u32()) > 0.0;
+    let saturation = formulas::f32_closed(rng.next_u32()) * options.saturation;
+    let mut hue = formulas::f32_closed(rng.next_u32());
 
     let variation_check = 1.0 - options.color_variations;
     let brightness_inv = 1.0 - options.brightness_noise;
@@ -267,14 +268,17 @@ fn color_output(
     };
 
     for u in 0..uv_size.0 {
-        let is_new_color =
-            ((rng.gen_range(-1.0, 1.0) + rng.gen_range(-1.0, 1.0) + rng.gen_range(-1.0, 1.0))
-                / 3.0 as f64)
-                .abs();
+        // Create a non-uniform random number being constrained more to the center (0)
+        let is_new_color = (formulas::f32_closed(rng.next_u32())
+            + formulas::f32_closed(rng.next_u32())
+            + formulas::f32_closed(rng.next_u32()))
+            / 3.0;
 
         if is_new_color > variation_check {
-            hue = rng.gen::<f64>();
+            hue = formulas::f32_closed(rng.next_u32());
         }
+
+        let u_sin = ((u as f32 / uv_size.0 as f32) * std::f32::consts::PI).sin();
 
         for v in 0..uv_size.1 {
             let index = if is_vertical_gradient {
@@ -288,21 +292,21 @@ fn color_output(
                 continue;
             }
 
-            let u_sin = ((u as f64 / uv_size.0 as f64) * std::f64::consts::PI).sin();
-            let brightness = u_sin * brightness_inv + rng.gen_range(0.0, options.brightness_noise);
+            let brightness = u_sin * brightness_inv
+                + formulas::f32_closed(rng.next_u32()) * options.brightness_noise;
 
             let mut rgb = HSL {
-                h: hue,
-                s: saturation,
-                l: brightness,
+                h: hue as f64 * 360.0,
+                s: saturation as f64,
+                l: brightness as f64,
             }
             .to_rgb();
 
             // Make the edges darker
             if val == -1 {
-                rgb.0 = (rgb.0 as f64 * options.edge_brightness) as u8;
-                rgb.1 = (rgb.1 as f64 * options.edge_brightness) as u8;
-                rgb.2 = (rgb.2 as f64 * options.edge_brightness) as u8;
+                rgb.0 = (rgb.0 as f32 * options.edge_brightness) as u8;
+                rgb.1 = (rgb.1 as f32 * options.edge_brightness) as u8;
+                rgb.2 = (rgb.2 as f32 * options.edge_brightness) as u8;
             }
 
             result[index] = ((rgb.0 as u32) << 16) | ((rgb.1 as u32) << 8) | (rgb.2 as u32);

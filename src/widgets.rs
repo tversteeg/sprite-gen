@@ -138,7 +138,7 @@ impl Widget<AppState> for ResultWidget {
                 // Generate new sprites
                 let width = data.width();
                 let mask = data.pixels();
-                let options = data.options();
+                let mut options = data.options();
                 let result_width = data.result_width();
                 let result_height = data.result_height();
 
@@ -146,6 +146,7 @@ impl Widget<AppState> for ResultWidget {
                 results.clear();
 
                 for _ in 0..data.results() {
+                    options.seed = rand::random();
                     results.push((
                         result_width,
                         result_height,
@@ -203,7 +204,7 @@ impl Widget<AppState> for ResultWidget {
         // Make the background white
         paint_ctx.fill(rect, &MaskValue::Empty.color());
 
-        let scale = data.scale();
+        let scale = data.render_scale as usize;
         let padding = 4;
 
         // Render the results

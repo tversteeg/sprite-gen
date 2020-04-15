@@ -8,7 +8,6 @@ use std::sync::RwLock;
 
 pub const MAX_GRID_SIZE: usize = 128;
 pub const MAX_RESULTS: usize = 1000;
-pub const MAX_SCALE: usize = 32;
 
 lazy_static! {
     pub static ref GRID: RwLock<Vec<MaskValue>> =
@@ -67,19 +66,16 @@ impl AppState {
         (self.size_y * MAX_GRID_SIZE as f64).floor().max(1.0) as usize
     }
 
-    pub fn scale(&self) -> usize {
-        (self.render_scale * MAX_SCALE as f64).floor().max(1.0) as usize
-    }
-
     pub fn options(&self) -> Options {
         Options {
             mirror_x: self.mirror_x,
             mirror_y: self.mirror_y,
-            edge_brightness: self.edge_brightness,
-            color_variations: self.color_variations + 0.01,
-            brightness_noise: self.brightness_noise + 0.01,
-            saturation: self.saturation,
+            edge_brightness: self.edge_brightness as f32,
+            color_variations: self.color_variations as f32 + 0.01,
+            brightness_noise: self.brightness_noise as f32 + 0.01,
+            saturation: self.saturation as f32,
             colored: self.colored,
+            seed: 0,
         }
     }
 
@@ -108,7 +104,7 @@ impl Default for AppState {
             results_amount: 0.1,
             size_x: 0.105,
             size_y: 0.08,
-            render_scale: 0.2,
+            render_scale: 6.0,
             edge_brightness: 0.3,
             color_variations: 0.2,
             brightness_noise: 0.3,
