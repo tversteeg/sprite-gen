@@ -23,93 +23,64 @@ struct Encoded {
 struct Delegate {}
 
 impl AppDelegate<AppState> for Delegate {
-    fn event(
+    fn command(
         &mut self,
         _ctx: &mut DelegateCtx,
-        _window_id: WindowId,
-        event: Event,
+        _target: Target,
+        cmd: &Command,
         data: &mut AppState,
         _env: &Env,
-    ) -> Option<Event> {
-        match event {
-            Event::Command(cmd) => match cmd.selector {
-                NEW_FILE => {
-                    // Clear the grid
-                    GRID.write()
-                        .unwrap()
-                        .iter_mut()
-                        .for_each(|p| *p = MaskValue::Empty);
+    ) -> bool {
+        if let Some(_) = cmd.get(NEW_FILE) {
+            // Clear the grid
+            GRID.write()
+                .unwrap()
+                .iter_mut()
+                .for_each(|p| *p = MaskValue::Empty);
 
-                    // Clear the results
-                    RESULTS.write().unwrap().clear();
+            // Clear the results
+            RESULTS.write().unwrap().clear();
 
-                    None
-                }
-                SAVE_FILE => {
-                    // Get the file path from the Save As menu if applicable
-                    if let Ok(file_info) = cmd.get_object::<FileInfo>() {
-                        data.file_path = Some(file_info.path().to_str().unwrap().to_string());
-                    }
+            return true;
+        }
+        if let Some(file_info) = cmd.get(OPEN_FILE) {
+            data.file_path = Some(file_info.path().to_str().unwrap().to_string());
 
-                    if data.file_path == None {
-                        // There's no path yet, show the popup
-                        return Some(Event::Command(SHOW_SAVE_PANEL.into()));
-                    }
-
-                    // Save the current grid to a new file
-                    bincode::serialize_into(
-                        File::create(data.file_path.as_ref().unwrap()).unwrap(),
-                        &Encoded {
-                            state: data.clone(),
-                            // Convert the grid to an array of i8
-                            grid: data.pixels().into_iter().map(|p| p.i8()).collect::<_>(),
-                        },
-                    )
-                    .expect("Could not serialize or write to save file");
-
-                    None
-                }
-                OPEN_FILE => {
-                    if let Ok(file_info) = cmd.get_object::<FileInfo>() {
-                        data.file_path = Some(file_info.path().to_str().unwrap().to_string());
-                    }
-
-                    if data.file_path == None {
-                        // There's no path yet, do nothing
-                        return None;
-                    }
-
-                    let decoded: Encoded = bincode::deserialize_from(
-                        File::open(data.file_path.as_ref().unwrap()).unwrap(),
-                    )
+            let decoded: Encoded =
+                bincode::deserialize_from(File::open(data.file_path.as_ref().unwrap()).unwrap())
                     .expect("Could not deserialize or open file");
 
-                    *data = decoded.state;
+            *data = decoded.state;
 
-                    None
-                }
-                _ => Some(Event::Command(cmd)),
-            },
-            other => Some(other),
+            return true;
         }
-    }
+        if let Some(file_info) = cmd.get(SAVE_FILE) {
+            // Get the file path from the Save As menu if applicable
+            if let Some(file_info) = file_info {
+                data.file_path = Some(file_info.path().to_str().unwrap().to_string());
+            }
 
-    fn window_added(
-        &mut self,
-        _id: WindowId,
-        _data: &mut AppState,
-        _env: &Env,
-        _ctx: &mut DelegateCtx,
-    ) {
-    }
+            if data.file_path == None {
+                // There's no path yet, show the popup
+                // TODO show save file popup
+                return true;
+            }
 
-    fn window_removed(
-        &mut self,
-        _id: WindowId,
-        _data: &mut AppState,
-        _env: &Env,
-        _ctx: &mut DelegateCtx,
-    ) {
+            // Save the current grid to a new file
+            bincode::serialize_into(
+                File::create(data.file_path.as_ref().unwrap()).unwrap(),
+                &Encoded {
+                    state: data.clone(),
+                    // Convert the grid to an array of i8
+                    grid: data.pixels().into_iter().map(|p| p.i8()).collect::<_>(),
+                },
+            )
+            .expect("Could not serialize or write to save file");
+
+            return true;
+        }
+
+        false
     }
 }
 
@@ -125,7 +96,7 @@ fn copy_to_clipboard(data: &AppState) {
             .join(", ")
     );
 
-    let mut clipboard = Application::clipboard();
+    let mut clipboard = Application::global().clipboard();
     clipboard.put_string(string);
 }
 
@@ -139,12 +110,26 @@ fn ui_builder() -> impl Widget<AppState> {
             )
             .with_child(
                 Button::new("Open")
-                    .on_click(|ctx, _data, _env| ctx.submit_command(SHOW_OPEN_PANEL, None))
+                    .on_click(|ctx, _data, _env| {
+                        let dialog_options = FileDialogOptions::new();
+
+                        ctx.submit_command(
+                            Command::new(SHOW_OPEN_PANEL, dialog_options.clone()),
+                            None,
+                        )
+                    })
                     .padding(5.0),
             )
             .with_child(
                 Button::new("Save")
-                    .on_click(|ctx, _data, _env| ctx.submit_command(SHOW_SAVE_PANEL, None))
+                    .on_click(|ctx, _data, _env| {
+                        let dialog_options = FileDialogOptions::new();
+
+                        ctx.submit_command(
+                            Command::new(SHOW_SAVE_PANEL, dialog_options.clone()),
+                            None,
+                        )
+                    })
                     .padding(5.0),
             )
             .with_child(

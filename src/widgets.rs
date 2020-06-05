@@ -134,7 +134,7 @@ impl ResultWidget {
 impl Widget<AppState> for ResultWidget {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AppState, _env: &Env) {
         if let Event::Command(cmd) = event {
-            if cmd.selector == RECALCULATE_SPRITES {
+            if cmd.get(RECALCULATE_SPRITES).is_some() {
                 // Generate new sprites
                 let width = data.width();
                 let mask = data.pixels();
