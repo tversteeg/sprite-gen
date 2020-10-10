@@ -29,7 +29,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sprite-gen = "0.1"
+sprite-gen = "0.2"
 ```
 
 And this to your crate root:
