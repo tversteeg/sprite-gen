@@ -22,7 +22,7 @@ travis-ci = {repository = "tversteeg/sprite-gen"}
 anyhow = "1.0.31"
 bincode = "1.2.1"
 druid = "0.6.0"
-itertools = "0.9.0"
+itertools = "0.10.0"
 lazy_static = "1.4.0"
 rand = "0.8.0"
 serde = { version = "1.0.111", features = ["derive"] }
