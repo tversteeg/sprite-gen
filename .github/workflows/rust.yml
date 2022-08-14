@@ -226,17 +226,17 @@ jobs:
 
       # These can be squashed when https://github.com/actions/download-artifact/issues/6 is closed
       - name: Download releases from github_build
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v3
         with:
           name: sprite-x86_64-unknown-linux-gnu.tar.gz
           path: .
       - name: Download releases from github_build
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v3
         with:
           name: sprite-x86_64-apple-darwin.tar.gz
           path: .
       - name: Download releases from github_build
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v3
         with:
           name: sprite-x86_64-pc-windows-msvc.zip
           path: .
