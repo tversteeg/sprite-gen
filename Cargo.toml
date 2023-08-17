@@ -19,7 +19,7 @@ travis-ci = {repository = "tversteeg/sprite-gen"}
 [workspace]
 
 [dependencies]
-anyhow = "1.0.31"
+anyhow = "1.0.75"
 bincode = "1.2.1"
 druid = "0.6.0"
 itertools = "0.10.0"
