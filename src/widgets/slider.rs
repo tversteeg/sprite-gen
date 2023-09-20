@@ -20,20 +20,20 @@ pub struct Slider {
     pub pos: f64,
     /// Whether the slider state is being captured by the mouse.
     pub dragged: bool,
+    /// A custom label with the value.
+    pub value_label: Option<String>,
 }
 
 impl Slider {
     /// Handle the input.
-    ///
-    /// Returns the current value.
-    pub fn update(&mut self, input: &Input) -> f64 {
+    pub fn update(&mut self, input: &Input) {
         if !self.dragged {
             // Detect whether the mouse is being pressed on the handle
             let handle = crate::sprite("slider-handle");
             let handle_rect = Rect::new(
-                self.offset.x,
+                self.offset.x - handle.width() as f64 / 2.0,
                 self.offset.y - handle.height() as f64 / 2.0,
-                handle.width() as f64 + self.length,
+                handle.width() as f64 * 2.0 + self.length,
                 handle.height() as f64 * 2.0,
             );
 
@@ -50,8 +50,6 @@ impl Slider {
             // Drag the slider
             self.pos = ((input.mouse_pos.x as f64 - self.offset.x) / self.length).clamp(0.0, 1.0);
         }
-
-        (self.max - self.min) * self.pos - self.min
     }
 
     /// Render the slider.
@@ -79,6 +77,20 @@ impl Slider {
                     0.0,
                 ),
         );
+
+        // Draw the optional label
+        if let Some(value_label) = &self.value_label {
+            crate::font().render(
+                &format!("{value_label}: {}", self.value().round()),
+                self.offset + (self.length + 12.0, 2.0),
+                canvas,
+            );
+        }
+    }
+
+    /// Actual value of the slider.
+    pub fn value(&self) -> f64 {
+        (self.max - self.min) * self.pos + self.min
     }
 }
 
@@ -92,6 +104,7 @@ impl Default for Slider {
             steps: None,
             pos: 0.0,
             dragged: false,
+            value_label: None,
         }
     }
 }

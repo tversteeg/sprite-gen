@@ -37,15 +37,23 @@ struct State {
 impl State {
     /// Construct the initial state.
     pub fn new() -> Self {
+        let settings = crate::settings();
+
         let x_pixels_slider = Slider {
-            offset: Vec2::new(20.0, 10.0),
-            length: 100.0,
+            offset: Vec2::new(20.0, 40.0),
+            length: settings.max_x_pixels - settings.min_x_pixels,
+            value_label: Some("X Pixels".to_string()),
+            min: settings.min_x_pixels,
+            max: settings.max_x_pixels,
             ..Default::default()
         };
 
         let y_pixels_slider = Slider {
-            offset: Vec2::new(20.0, 50.0),
-            length: 100.0,
+            offset: Vec2::new(20.0, 70.0),
+            length: settings.max_y_pixels - settings.min_y_pixels,
+            min: settings.min_y_pixels,
+            max: settings.max_y_pixels,
+            value_label: Some("Y Pixels".to_string()),
             ..Default::default()
         };
 
@@ -76,7 +84,16 @@ impl State {
 
 /// Application settings loaded from a file so it's easier to change them with hot-reloading.
 #[derive(Deserialize)]
-pub struct Settings {}
+pub struct Settings {
+    /// Minimum amount of X pixels.
+    min_x_pixels: f64,
+    /// Maximum amount of X pixels.
+    max_x_pixels: f64,
+    /// Minimum amount of Y pixels.
+    min_y_pixels: f64,
+    /// Maximum amount of Y pixels.
+    max_y_pixels: f64,
+}
 
 impl Asset for Settings {
     const EXTENSION: &'static str = "toml";
