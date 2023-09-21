@@ -26,7 +26,9 @@ pub struct Slider {
 
 impl Slider {
     /// Handle the input.
-    pub fn update(&mut self, input: &Input) {
+    ///
+    /// Returns whether the value changed.
+    pub fn update(&mut self, input: &Input) -> bool {
         if !self.dragged {
             // Detect whether the mouse is being pressed on the handle
             let handle = crate::sprite("slider-handle");
@@ -43,12 +45,25 @@ impl Slider {
             {
                 self.dragged = true;
             }
+
+            false
         } else if input.left_mouse.is_released() {
             // Always release the slider when the mouse is released
             self.dragged = false;
+
+            false
         } else if input.left_mouse.is_down() {
+            let prev = self.pos;
             // Drag the slider
             self.pos = ((input.mouse_pos.x as f64 - self.offset.x) / self.length).clamp(0.0, 1.0);
+
+            // Clamp to steps
+            let steps = self.steps.unwrap_or(self.length);
+            self.pos = (self.pos * steps).round() / steps;
+
+            self.pos != prev
+        } else {
+            false
         }
     }
 

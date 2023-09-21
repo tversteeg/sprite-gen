@@ -17,7 +17,7 @@ use sprite::Sprite;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::runtime::Runtime;
 use vek::{Aabr, Extent2, Vec2};
-use widgets::slider::Slider;
+use widgets::{button::Button, grid::Grid, slider::Slider};
 
 /// Window size.
 pub const SIZE: Extent2<usize> = Extent2::new(640, 480);
@@ -28,10 +28,14 @@ pub static ASSETS: OnceLock<Assets> = OnceLock::new();
 /// Application state.
 #[derive(Debug, Default)]
 struct State {
+    /// Grid for drawing.
+    drawing_area: Grid,
     /// Slider for X pixels value.
     x_pixels_slider: Slider,
     /// Slider for Y pixels value.
     y_pixels_slider: Slider,
+    /// Button to clear the canvas.
+    clear_canvas_button: Button,
 }
 
 impl State {
@@ -39,34 +43,70 @@ impl State {
     pub fn new() -> Self {
         let settings = crate::settings();
 
+        let drawing_area = Grid {
+            offset: Vec2::new(260.0, 40.0),
+            size: Vec2::new(settings.min_x_pixels, settings.min_y_pixels).as_(),
+            scaling: Vec2::new(16, 16),
+            ..Default::default()
+        };
+
         let x_pixels_slider = Slider {
             offset: Vec2::new(20.0, 40.0),
-            length: settings.max_x_pixels - settings.min_x_pixels,
+            length: 100.0,
             value_label: Some("X Pixels".to_string()),
             min: settings.min_x_pixels,
             max: settings.max_x_pixels,
+            steps: Some((settings.max_x_pixels - settings.min_x_pixels) / 4.0),
             ..Default::default()
         };
 
         let y_pixels_slider = Slider {
             offset: Vec2::new(20.0, 70.0),
-            length: settings.max_y_pixels - settings.min_y_pixels,
+            length: 100.0,
             min: settings.min_y_pixels,
             max: settings.max_y_pixels,
             value_label: Some("Y Pixels".to_string()),
+            steps: Some((settings.max_y_pixels - settings.min_y_pixels) / 4.0),
+            ..Default::default()
+        };
+
+        let clear_canvas_button = Button {
+            offset: Vec2::new(10.0, 10.0),
+            size: Extent2::new(80.0, 18.0),
+            label: Some("Clear".to_string()),
             ..Default::default()
         };
 
         Self {
+            drawing_area,
             x_pixels_slider,
             y_pixels_slider,
+            clear_canvas_button,
         }
     }
 
     /// Update application state and handle input.
     pub fn update(&mut self, input: &Input) {
-        self.x_pixels_slider.update(input);
-        self.y_pixels_slider.update(input);
+        if self.x_pixels_slider.update(input) || self.y_pixels_slider.update(input) {
+            self.drawing_area.resize(
+                Vec2::new(self.x_pixels_slider.value(), self.y_pixels_slider.value()).as_(),
+                Vec2::new(
+                    if self.x_pixels_slider.value() < 24.0 {
+                        16
+                    } else {
+                        9
+                    },
+                    if self.y_pixels_slider.value() < 24.0 {
+                        16
+                    } else {
+                        9
+                    },
+                ),
+            );
+        }
+        self.drawing_area.update(input);
+
+        self.clear_canvas_button.update(input);
     }
 
     /// Render the window.
@@ -77,8 +117,10 @@ impl State {
             canvas,
         );
 
+        self.drawing_area.render(canvas);
         self.x_pixels_slider.render(canvas);
         self.y_pixels_slider.render(canvas);
+        self.clear_canvas_button.render(canvas);
     }
 }
 

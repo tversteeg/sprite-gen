@@ -51,6 +51,12 @@ impl Sprite {
         );
     }
 
+    /// Draw the sprite as a slice9 scaling.
+    pub fn render_options(&self, canvas: &mut [u32], blit_options: &BlitOptions) {
+        self.sprite
+            .blit(canvas, SIZE.into_tuple().into(), blit_options);
+    }
+
     /// Whether a pixel on the image is transparent.
     pub fn is_pixel_transparent(&self, pixel: Vec2<u32>) -> bool {
         let offset: Vec2<i32> = pixel.as_();

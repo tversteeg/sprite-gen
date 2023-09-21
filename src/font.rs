@@ -60,7 +60,10 @@ impl Font {
     pub fn render_centered(&self, text: &str, pos: Vec2<f64>, canvas: &mut [u32]) {
         self.render(
             text,
-            pos - Vec2::new((text.len() as f64 * self.char_size.w as f64) / 2.0, 0.0),
+            pos - Vec2::new(
+                (text.len() as f64 * self.char_size.w as f64) / 2.0,
+                self.char_size.h as f64 / 2.0,
+            ),
             canvas,
         )
     }

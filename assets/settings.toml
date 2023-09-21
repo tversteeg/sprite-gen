@@ -1,4 +1,4 @@
 min_x_pixels = 8
-max_x_pixels = 128
+max_x_pixels = 40
 min_y_pixels = 8
-max_y_pixels = 128
+max_y_pixels = 32
