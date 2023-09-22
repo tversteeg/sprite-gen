@@ -16,6 +16,10 @@ categories = ["games", "rendering", "game-engines"]
 [workspace]
 members = ["run-wasm", "lib"]
 
+[features]
+default = ["embed-assets"]
+embed-assets = []
+
 [dependencies]
 winit = "0.28"
 log = "0.4"
