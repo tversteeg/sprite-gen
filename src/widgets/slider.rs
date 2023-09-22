@@ -1,5 +1,5 @@
 use blit::slice::Slice;
-use vek::{Aabr, Extent2, Rect, Vec2};
+use vek::{Rect, Vec2};
 
 use crate::input::Input;
 

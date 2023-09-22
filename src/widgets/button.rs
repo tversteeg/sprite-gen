@@ -1,5 +1,5 @@
-use blit::{slice::Slice, BlitOptions};
-use vek::{Aabr, Extent2, Rect, Vec2};
+use blit::BlitOptions;
+use vek::{Extent2, Rect, Vec2};
 
 use crate::input::Input;
 
@@ -10,6 +10,10 @@ pub struct Button {
     pub offset: Vec2<f64>,
     /// Size of the button in pixels.
     pub size: Extent2<f64>,
+    /// Extra size of the click region in pixels.
+    ///
+    /// Relative to the offset.
+    pub click_region: Option<Rect<f64, f64>>,
     /// A custom label with text centered at the button.
     pub label: Option<String>,
     /// Current button state.
@@ -21,11 +25,16 @@ impl Button {
     ///
     /// Return when the button is released.
     pub fn update(&mut self, input: &Input) -> bool {
-        let rect = Rect::new(self.offset.x, self.offset.y, self.size.w, self.size.h);
+        let mut rect = Rect::new(self.offset.x, self.offset.y, self.size.w, self.size.h);
+        if let Some(mut click_region) = self.click_region {
+            click_region.x += self.offset.x;
+            click_region.y += self.offset.y;
+            rect = rect.union(click_region);
+        }
 
         match self.state {
             State::Normal => {
-                if rect.contains_point(input.mouse_pos.as_()) {
+                if !input.left_mouse.is_down() && rect.contains_point(input.mouse_pos.as_()) {
                     self.state = State::Hover;
                 }
 
@@ -82,6 +91,7 @@ impl Default for Button {
             size: Extent2::zero(),
             label: None,
             state: State::default(),
+            click_region: None,
         }
     }
 }

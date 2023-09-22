@@ -183,6 +183,11 @@ where
                             .2
                             .left_mouse
                             .handle_bool(*state == ElementState::Pressed);
+                    } else if *button == MouseButton::Right {
+                        g.game
+                            .2
+                            .right_mouse
+                            .handle_bool(*state == ElementState::Pressed);
                     }
                 }
 

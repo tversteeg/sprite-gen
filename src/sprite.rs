@@ -1,9 +1,6 @@
-use std::{borrow::Cow, f64::consts::TAU, num::NonZeroU16};
+use std::borrow::Cow;
 
-use assets_manager::{
-    loader::{Loader, TomlLoader},
-    AnyCache, Asset, BoxedError, Compound, SharedString,
-};
+use assets_manager::{loader::Loader, Asset};
 use blit::{slice::Slice, Blit, BlitBuffer, BlitOptions, ToBlitBuffer};
 use image::ImageFormat;
 use vek::{Extent2, Vec2};

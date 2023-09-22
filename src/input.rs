@@ -6,6 +6,7 @@ pub struct Input {
     pub mouse_pos: Vec2<i32>,
 
     pub left_mouse: ButtonState,
+    pub right_mouse: ButtonState,
     pub up: ButtonState,
     pub down: ButtonState,
     pub left: ButtonState,
@@ -24,6 +25,7 @@ impl Input {
     /// Unset the released state.
     pub fn update(&mut self) {
         self.left_mouse.update();
+        self.right_mouse.update();
         self.up.update();
         self.down.update();
         self.left.update();
