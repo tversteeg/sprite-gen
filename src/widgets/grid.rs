@@ -1,4 +1,5 @@
 use sprite_gen::MaskValue;
+use taffy::prelude::{Layout, Node};
 use vek::{Extent2, Vec2};
 
 use crate::{input::Input, SIZE};
@@ -16,13 +17,17 @@ pub struct Grid {
     pub values: Vec<MaskValue>,
     /// Which item is hovered over by the mouse.
     pub hover_pos: Option<Vec2<usize>>,
+    /// Taffy layout node.
+    pub node: Node,
 }
 
 impl Grid {
     /// Construct a new grid.
-    pub fn new(offset: Vec2<f64>, size: Extent2<usize>, scaling: Extent2<usize>) -> Self {
+    pub fn new(node: Node, size: Extent2<usize>) -> Self {
         let values = vec![MaskValue::Empty; size.w * size.h];
         let hover_pos = None;
+        let scaling = Extent2::zero();
+        let offset = Vec2::zero();
 
         Self {
             offset,
@@ -30,6 +35,7 @@ impl Grid {
             scaling,
             values,
             hover_pos,
+            node,
         }
     }
 
@@ -119,6 +125,14 @@ impl Grid {
             self.values.resize(self.size.product(), MaskValue::Empty);
         }
         self.scaling = scaling;
+    }
+
+    /// Update from layout changes.
+    pub fn update_layout(&mut self, location: Vec2<f64>, layout: &Layout) {
+        self.scaling.w = layout.size.width as usize / self.size.w;
+        self.scaling.h = layout.size.width as usize / self.size.h;
+
+        self.offset = location;
     }
 
     /// Clear the grid.

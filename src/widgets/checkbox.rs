@@ -1,3 +1,4 @@
+use taffy::prelude::Node;
 use vek::{Extent2, Rect, Vec2};
 
 use crate::input::Input;
@@ -75,6 +76,12 @@ impl Checkbox {
     pub fn set(&mut self, state: bool) {
         self.checked = state;
     }
+
+    /// Update the layout.
+    pub fn update_layout(&mut self, location: Vec2<f64>) {
+        self.offset = location;
+        self.button.offset = location;
+    }
 }
 
 /// A group of checkboxes.
@@ -86,30 +93,22 @@ pub struct CheckboxGroup<const N: usize> {
     pub title: Option<String>,
     /// All checkboxes.
     pub boxes: [Checkbox; N],
+    /// Taffy layout node.
+    pub node: Node,
 }
 
 impl<const N: usize> CheckboxGroup<N> {
     /// Construct a new checkbox button group.
-    pub fn new(offset: Vec2<f64>, boxes: [(&str, bool); N], title: Option<String>) -> Self {
-        let mut index = -1;
-        let boxes = boxes.map(|(label, checked)| {
-            index += 1;
-            Checkbox::new(
-                // Move each consecutive radio checkbox down a set amount of pixels, also keeping space for the title if applicable
-                offset
-                    + (
-                        0.0,
-                        index as f64 * 30.0 + if title.is_some() { 20.0 } else { 0.0 },
-                    ),
-                Some(label.to_string()),
-                checked,
-            )
-        });
+    pub fn new(boxes: [(&str, bool); N], title: Option<String>, node: Node) -> Self {
+        let offset = Vec2::zero();
+        let boxes = boxes
+            .map(|(label, checked)| Checkbox::new(Vec2::zero(), Some(label.to_string()), checked));
 
         Self {
             offset,
             title,
             boxes,
+            node,
         }
     }
 
@@ -145,5 +144,19 @@ impl<const N: usize> CheckboxGroup<N> {
         assert!(index < N);
 
         self.boxes[index].checked
+    }
+
+    /// Update the layout.
+    pub fn update_layout(&mut self, location: Vec2<f64>) {
+        self.offset = location;
+        for index in 0..self.boxes.len() {
+            self.boxes.get_mut(index).unwrap().update_layout(
+                location
+                    + (
+                        0.0,
+                        index as f64 * 30.0 + if self.title.is_some() { 20.0 } else { 0.0 },
+                    ),
+            );
+        }
     }
 }

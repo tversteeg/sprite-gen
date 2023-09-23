@@ -1,3 +1,4 @@
+use taffy::prelude::Node;
 use vek::Vec2;
 
 use crate::input::Input;
@@ -15,33 +16,20 @@ pub struct Radio<const N: usize> {
     pub selected: usize,
     /// All checkboxes.
     pub boxes: [Checkbox; N],
+    /// Taffy layout node.
+    pub node: Node,
 }
 
 impl<const N: usize> Radio<N> {
     /// Construct a new checkbox button.
-    pub fn new(
-        offset: Vec2<f64>,
-        boxes: [&str; N],
-        title: Option<String>,
-        selected: usize,
-    ) -> Self {
+    pub fn new(boxes: [&str; N], title: Option<String>, selected: usize, node: Node) -> Self {
         assert!(selected < N);
 
+        let offset = Vec2::zero();
         let mut index = 0;
         let boxes = boxes.map(|label| {
-            let checkbox = Checkbox::new(
-                // Move each consecutive radio checkbox down a set amount of pixels, also keeping space for the title if applicable
-                offset
-                    + (
-                        0.0,
-                        index as f64 * 30.0 + if title.is_some() { 20.0 } else { 0.0 },
-                    ),
-                Some(label.to_string()),
-                index == selected,
-            );
             index += 1;
-
-            checkbox
+            Checkbox::new(Vec2::zero(), Some(label.to_string()), index - 1 == selected)
         });
 
         Self {
@@ -49,6 +37,7 @@ impl<const N: usize> Radio<N> {
             title,
             selected,
             boxes,
+            node,
         }
     }
 
@@ -88,6 +77,20 @@ impl<const N: usize> Radio<N> {
 
         if let Some(label) = &self.title {
             crate::font().render(label, self.offset, canvas);
+        }
+    }
+
+    /// Update the layout.
+    pub fn update_layout(&mut self, location: Vec2<f64>) {
+        self.offset = location;
+        for index in 0..self.boxes.len() {
+            self.boxes.get_mut(index).unwrap().update_layout(
+                location
+                    + (
+                        0.0,
+                        index as f64 * 30.0 + if self.title.is_some() { 20.0 } else { 0.0 },
+                    ),
+            );
         }
     }
 }

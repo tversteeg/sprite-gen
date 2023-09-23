@@ -1,4 +1,5 @@
 use blit::slice::Slice;
+use taffy::prelude::{Layout, Node};
 use vek::{Rect, Vec2};
 
 use crate::input::Input;
@@ -22,6 +23,8 @@ pub struct Slider {
     pub dragged: bool,
     /// A custom label with the value.
     pub value_label: Option<String>,
+    /// Taffy layout node.
+    pub node: Node,
 }
 
 impl Slider {
@@ -103,6 +106,11 @@ impl Slider {
         }
     }
 
+    /// Update from layout changes.
+    pub fn update_layout(&mut self, location: Vec2<f64>) {
+        self.offset = location;
+    }
+
     /// Actual value of the slider.
     pub fn value(&self) -> f64 {
         (self.max - self.min) * self.pos + self.min
@@ -120,6 +128,7 @@ impl Default for Slider {
             pos: 0.0,
             dragged: false,
             value_label: None,
+            node: Node::default(),
         }
     }
 }

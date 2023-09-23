@@ -1,4 +1,5 @@
 use blit::BlitOptions;
+use taffy::prelude::{Layout, Node};
 use vek::{Extent2, Rect, Vec2};
 
 use crate::input::Input;
@@ -18,6 +19,8 @@ pub struct Button {
     pub label: Option<String>,
     /// Current button state.
     pub state: State,
+    /// Taffy layout node.
+    pub node: Node,
 }
 
 impl Button {
@@ -82,6 +85,15 @@ impl Button {
             );
         }
     }
+
+    /// Update from layout changes.
+    pub fn update_layout(&mut self, location: Vec2<f64>, layout: &Layout) {
+        self.offset.x = location.x;
+        self.offset.y = location.y;
+
+        self.size.w = layout.size.width as f64;
+        self.size.h = layout.size.height as f64;
+    }
 }
 
 impl Default for Button {
@@ -92,6 +104,7 @@ impl Default for Button {
             label: None,
             state: State::default(),
             click_region: None,
+            node: Node::default(),
         }
     }
 }

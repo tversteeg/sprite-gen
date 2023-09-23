@@ -17,6 +17,16 @@ use serde::Deserialize;
 use sprite::Sprite;
 use sprite_gen::{MaskValue, Options};
 use sprites::Sprites;
+use taffy::{
+    prelude::{Node, Rect, Size},
+    style::{
+        AlignContent, AlignItems, AvailableSpace, Dimension, Display, FlexDirection, FlexWrap,
+        Style,
+    },
+    style_helpers::TaffyMaxContent,
+    tree::LayoutTree,
+    Taffy,
+};
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::runtime::Runtime;
 use vek::{Extent2, Vec2};
@@ -29,7 +39,6 @@ pub const SIZE: Extent2<usize> = Extent2::new(640, 640);
 pub static ASSETS: OnceLock<Assets> = OnceLock::new();
 
 /// Application state.
-#[derive(Debug)]
 struct State {
     /// Rendered sprites.
     sprites: Sprites,
@@ -55,6 +64,10 @@ struct State {
     brightness_noise_slider: Slider,
     /// Slider for saturation.
     saturation_slider: Slider,
+    /// Flexbox grid to lay out the widgets.
+    layout: Taffy,
+    /// Root grid node.
+    root: Node,
 }
 
 impl State {
@@ -62,14 +75,34 @@ impl State {
     pub fn new() -> Self {
         let settings = crate::settings();
 
+        // Define the layout
+        let mut layout = Taffy::new();
+
+        // Grid for editing the sprite shape
         let drawing_area = Grid::new(
-            Vec2::new(260.0, 10.0),
+            layout
+                .new_leaf(Style {
+                    size: Size::auto(),
+                    justify_content: Some(AlignContent::Center),
+                    min_size: Size::from_points(200.0, 200.0),
+                    ..Default::default()
+                })
+                .unwrap(),
             Extent2::new(settings.min_x_pixels, settings.min_y_pixels).as_(),
-            Extent2::new(64, 64),
         );
 
+        let slider_style = Style {
+            size: Size::from_points(250.0, 20.0),
+            margin: Rect {
+                left: taffy::style_helpers::points(5.0),
+                right: taffy::style_helpers::auto(),
+                top: taffy::style_helpers::auto(),
+                bottom: taffy::style_helpers::auto(),
+            },
+            ..Default::default()
+        };
         let x_pixels_slider = Slider {
-            offset: Vec2::new(20.0, 40.0),
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
             length: 100.0,
             value_label: Some("X Pixels".to_string()),
             min: settings.min_x_pixels,
@@ -79,7 +112,7 @@ impl State {
         };
 
         let y_pixels_slider = Slider {
-            offset: Vec2::new(20.0, 70.0),
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
             length: 100.0,
             min: settings.min_y_pixels,
             max: settings.max_y_pixels,
@@ -88,29 +121,42 @@ impl State {
             ..Default::default()
         };
 
+        let button_style = Style {
+            size: Size::from_points(80.0, 18.0),
+            ..Default::default()
+        };
         let clear_canvas_button = Button {
-            offset: Vec2::new(10.0, 10.0),
-            size: Extent2::new(80.0, 18.0),
+            node: layout.new_leaf(button_style.clone()).unwrap(),
             label: Some("Clear".to_string()),
             ..Default::default()
         };
 
         let brush_radio = Radio::new(
-            Vec2::new(150.0, 100.0),
             ["Solid", "Empty", "Body1", "Body2"],
             Some("Brush".to_string()),
             0,
+            layout
+                .new_leaf(Style {
+                    min_size: Size::from_points(250.0, 150.0),
+                    ..Default::default()
+                })
+                .unwrap(),
         );
         let brush = MaskValue::Solid;
 
         let options_group = CheckboxGroup::new(
-            Vec2::new(10.0, 100.0),
             [("Colored", true), ("Mirror X", true), ("Mirror Y", false)],
             Some("Options".to_string()),
+            layout
+                .new_leaf(Style {
+                    min_size: Size::from_points(250.0, 120.0),
+                    ..Default::default()
+                })
+                .unwrap(),
         );
 
         let edge_brightness_slider = Slider {
-            offset: Vec2::new(20.0, 350.0),
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
             length: 100.0,
             value_label: Some("Edge Brightness".to_string()),
             min: 0.0,
@@ -120,7 +166,7 @@ impl State {
         };
 
         let color_variations_slider = Slider {
-            offset: Vec2::new(20.0, 380.0),
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
             length: 100.0,
             value_label: Some("Color Variations".to_string()),
             min: 0.0,
@@ -130,7 +176,7 @@ impl State {
         };
 
         let brightness_noise_slider = Slider {
-            offset: Vec2::new(20.0, 410.0),
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
             length: 100.0,
             value_label: Some("Brightness Noise".to_string()),
             min: 0.0,
@@ -140,7 +186,7 @@ impl State {
         };
 
         let saturation_slider = Slider {
-            offset: Vec2::new(20.0, 440.0),
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
             length: 100.0,
             value_label: Some("Saturation".to_string()),
             min: 0.0,
@@ -159,7 +205,92 @@ impl State {
             ..Default::default()
         };
 
-        Self {
+        let gap = Size {
+            width: taffy::style_helpers::points(2.0),
+            height: taffy::style_helpers::points(2.0),
+        };
+
+        // Split the layout top vertical part into two horizontal parts
+        let topleft = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    justify_content: Some(AlignContent::SpaceAround),
+                    gap,
+                    ..Default::default()
+                },
+                &[
+                    clear_canvas_button.node,
+                    x_pixels_slider.node,
+                    y_pixels_slider.node,
+                    brush_radio.node,
+                    options_group.node,
+                    edge_brightness_slider.node,
+                    saturation_slider.node,
+                    color_variations_slider.node,
+                    brightness_noise_slider.node,
+                ],
+            )
+            .unwrap();
+        let topright = layout
+            .new_with_children(
+                Style {
+                    flex_grow: 1.0,
+                    min_size: Size::from_percent(0.5, 0.5),
+                    gap,
+                    ..Default::default()
+                },
+                &[drawing_area.node],
+            )
+            .unwrap();
+
+        // Split the layout into two vertical parts
+        let top = layout
+            .new_with_children(
+                Style {
+                    min_size: Size {
+                        width: taffy::style_helpers::percent(1.0),
+                        height: taffy::style_helpers::auto(),
+                    },
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Row,
+                    justify_content: Some(AlignContent::SpaceBetween),
+                    align_items: Some(AlignItems::Stretch),
+                    gap,
+                    ..Default::default()
+                },
+                &[topleft, topright],
+            )
+            .unwrap();
+        let bottom = layout
+            .new_leaf(Style {
+                min_size: Size {
+                    width: taffy::style_helpers::percent(1.0),
+                    height: taffy::style_helpers::percent(0.3),
+                },
+                gap,
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Everything together
+        let root = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    justify_content: Some(AlignContent::Center),
+                    size: Size::from_points(SIZE.w as f32, SIZE.h as f32),
+                    padding: Rect::points(5.0),
+                    gap,
+                    ..Default::default()
+                },
+                &[top, bottom],
+            )
+            .unwrap();
+
+        let mut this = Self {
             sprites,
             drawing_area,
             x_pixels_slider,
@@ -172,7 +303,14 @@ impl State {
             color_variations_slider,
             brightness_noise_slider,
             saturation_slider,
-        }
+            layout,
+            root,
+        };
+
+        this.update_layout();
+        this.generate();
+
+        this
     }
 
     /// Update application state and handle input.
@@ -263,6 +401,41 @@ impl State {
         self.saturation_slider.render(canvas);
     }
 
+    /// Update the layout.
+    pub fn update_layout(&mut self) {
+        // Compute the layout
+        self.layout
+            .compute_layout(self.root, Size::MAX_CONTENT)
+            .unwrap();
+
+        self.drawing_area.update_layout(
+            self.abs_location(self.drawing_area.node),
+            self.layout.layout(self.drawing_area.node).unwrap(),
+        );
+        self.x_pixels_slider
+            .update_layout(self.abs_location(self.x_pixels_slider.node));
+        self.y_pixels_slider
+            .update_layout(self.abs_location(self.y_pixels_slider.node));
+        self.clear_canvas_button.update_layout(
+            self.abs_location(self.clear_canvas_button.node),
+            self.layout.layout(self.clear_canvas_button.node).unwrap(),
+        );
+        self.brush_radio
+            .update_layout(self.abs_location(self.brush_radio.node));
+        self.options_group
+            .update_layout(self.abs_location(self.options_group.node));
+        self.edge_brightness_slider
+            .update_layout(self.abs_location(self.edge_brightness_slider.node));
+        self.saturation_slider
+            .update_layout(self.abs_location(self.saturation_slider.node));
+        self.color_variations_slider
+            .update_layout(self.abs_location(self.color_variations_slider.node));
+        self.brightness_noise_slider
+            .update_layout(self.abs_location(self.brightness_noise_slider.node));
+
+        taffy::debug::print_tree(&self.layout, self.root);
+    }
+
     /// Generate new sprites.
     pub fn generate(&mut self) {
         // Scale to fill the rectangle with the lowest factor
@@ -296,6 +469,24 @@ impl State {
             amount,
             scale,
         );
+    }
+
+    /// Get absolute coordinates for a node.
+    ///
+    /// We have to do this recursively because taffy doesn't expose it directly.
+    pub fn abs_location(&self, mut node: Node) -> Vec2<f64> {
+        let layout = self.layout.layout(node).unwrap().location;
+        let mut coord = Vec2::new(layout.x as f64, layout.y as f64);
+
+        while let Some(parent) = self.layout.parent(node) {
+            let layout = self.layout.layout(parent).unwrap().location;
+            coord.x += layout.x as f64;
+            coord.y += layout.y as f64;
+
+            node = parent;
+        }
+
+        coord
     }
 }
 
