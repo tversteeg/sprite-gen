@@ -129,7 +129,7 @@ jobs:
           ruby-version: "2.6"
 
       # Install Python at a fixed version
-      - uses: actions/setup-python@v1
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.7"
 
