@@ -33,7 +33,7 @@ use vek::{Extent2, Vec2};
 use widgets::{button::Button, checkbox::CheckboxGroup, grid::Grid, radio::Radio, slider::Slider};
 
 /// Window size.
-pub const SIZE: Extent2<usize> = Extent2::new(640, 640);
+pub const SIZE: Extent2<usize> = Extent2::new(640, 600);
 
 /// The assets as a 'static reference.
 pub static ASSETS: OnceLock<Assets> = OnceLock::new();
@@ -82,9 +82,9 @@ impl State {
         let drawing_area = Grid::new(
             layout
                 .new_leaf(Style {
-                    size: Size::auto(),
                     justify_content: Some(AlignContent::Center),
-                    min_size: Size::from_points(200.0, 200.0),
+                    min_size: Size::from_percent(0.6, 0.5),
+                    flex_grow: 1.0,
                     ..Default::default()
                 })
                 .unwrap(),
@@ -137,7 +137,7 @@ impl State {
             0,
             layout
                 .new_leaf(Style {
-                    min_size: Size::from_points(250.0, 150.0),
+                    min_size: Size::from_points(80.0, 150.0),
                     ..Default::default()
                 })
                 .unwrap(),
@@ -149,7 +149,7 @@ impl State {
             Some("Options".to_string()),
             layout
                 .new_leaf(Style {
-                    min_size: Size::from_points(250.0, 120.0),
+                    min_size: Size::from_points(100.0, 120.0),
                     ..Default::default()
                 })
                 .unwrap(),
@@ -215,7 +215,8 @@ impl State {
             .new_with_children(
                 Style {
                     display: Display::Flex,
-                    flex_direction: FlexDirection::Column,
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
                     justify_content: Some(AlignContent::SpaceAround),
                     gap,
                     ..Default::default()
@@ -231,17 +232,6 @@ impl State {
                     color_variations_slider.node,
                     brightness_noise_slider.node,
                 ],
-            )
-            .unwrap();
-        let topright = layout
-            .new_with_children(
-                Style {
-                    flex_grow: 1.0,
-                    min_size: Size::from_percent(0.5, 0.5),
-                    gap,
-                    ..Default::default()
-                },
-                &[drawing_area.node],
             )
             .unwrap();
 
@@ -260,7 +250,7 @@ impl State {
                     gap,
                     ..Default::default()
                 },
-                &[topleft, topright],
+                &[topleft, drawing_area.node],
             )
             .unwrap();
         let bottom = layout
@@ -280,10 +270,9 @@ impl State {
                 Style {
                     display: Display::Flex,
                     flex_direction: FlexDirection::Column,
-                    justify_content: Some(AlignContent::Center),
+                    justify_content: Some(AlignContent::SpaceBetween),
                     size: Size::from_points(SIZE.w as f32, SIZE.h as f32),
                     padding: Rect::points(5.0),
-                    gap,
                     ..Default::default()
                 },
                 &[top, bottom],
@@ -349,6 +338,7 @@ impl State {
             );
 
             self.generate();
+            self.update_layout();
         }
 
         // Allow user to draw
