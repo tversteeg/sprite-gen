@@ -4,7 +4,7 @@ version = "0.2.0"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 license = "GPL-3.0"
 homepage = "https://github.com/tversteeg/sprite-gen"
-edition = "2018"
+edition = "2021"
 
 readme = "../README.md"
 description = "Procedurally generate pixel sprites library"
@@ -14,15 +14,12 @@ repository = "https://github.com/tversteeg/sprite-gen.git"
 keywords = ["gamedev", "sprite", "procedural", "procgen"]
 categories = ["games", "rendering", "game-engines"]
 
-[badges]
-travis-ci = {repository = "tversteeg/sprite-gen"}
-
 [dependencies]
 hsl = "0.1.1"
 randomize = "3.0.1"
 
 [dev-dependencies]
-criterion = "0.3.1"
+criterion = "0.5.1"
 
 [[bench]]
 name = "bench"

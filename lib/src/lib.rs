@@ -1,14 +1,13 @@
-#![crate_name = "sprite_gen"]
-
 use hsl::HSL;
 use randomize::{formulas, PCG32};
 
 /// Replacement for the `i8` datatype that can be passed to `gen_sprite`.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub enum MaskValue {
     /// - `-1`: This pixel will always be a border.
     Solid,
     /// - `0`: This pixel will always be empty.
+    #[default]
     Empty,
     /// - `1`: This pixel will either be empty or filled (body).
     Body1,
@@ -41,12 +40,6 @@ impl From<i8> for MaskValue {
             2 => MaskValue::Body2,
             _ => MaskValue::Empty,
         }
-    }
-}
-
-impl Default for MaskValue {
-    fn default() -> Self {
-        MaskValue::Empty
     }
 }
 

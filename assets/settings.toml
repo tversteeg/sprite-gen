@@ -1,0 +1,5 @@
+min_x_pixels = 4
+max_x_pixels = 40
+min_y_pixels = 4
+max_y_pixels = 32
+preview_requested = { w = 3, h = 3 }

@@ -6,10 +6,10 @@
 
 ## Run
 
-On Linux you need the [gtk-rs dependencies](https://gtk-rs.org/docs/requirements.html) to compile:
-
-    cargo install sprite
-    sprite
+```bash
+cargo install sprite
+sprite
+```
 
 This should produce the following window:
 
@@ -31,19 +31,3 @@ Add this to your `Cargo.toml`:
 [dependencies]
 sprite-gen = "0.2"
 ```
-
-And this to your crate root:
-
-```rust
-extern crate sprite_gen;
-```
-
-### Run the example
-
-On Linux you need the `xorg-dev` package as required by `minifb` -- `sudo apt install xorg-dev`
-
-    cargo run --example minifb
-
-This should produce the following window:
-
-![Example](img/example.png?raw=true)

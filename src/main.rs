@@ -1,290 +1,593 @@
-mod appstate;
+mod assets;
+mod font;
+mod input;
+mod sprite;
+mod sprites;
 mod widgets;
+mod window;
 
-use crate::{appstate::*, widgets::*};
-use anyhow::Result;
-use druid::commands::*;
-use druid::widget::*;
-use druid::*;
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use sprite_gen::MaskValue;
-use std::fs::File;
+use std::sync::OnceLock;
 
-const BOX_SIZE: f64 = 100.0;
-const LABEL_SIZE: f64 = 200.0;
+use assets::Assets;
+use assets_manager::{loader::TomlLoader, Asset, AssetGuard};
+use font::Font;
+use input::Input;
+use miette::Result;
+use serde::Deserialize;
+use sprite::Sprite;
+use sprite_gen::{MaskValue, Options};
+use sprites::Sprites;
+use taffy::{
+    prelude::{Node, Rect, Size},
+    style::{AlignContent, AlignItems, Display, FlexDirection, FlexWrap, Style},
+    style_helpers::TaffyMaxContent,
+    tree::LayoutTree,
+    Taffy,
+};
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::runtime::Runtime;
+use vek::{Extent2, Vec2};
+use widgets::{button::Button, checkbox::CheckboxGroup, grid::Grid, radio::Radio, slider::Slider};
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Encoded {
-    pub state: AppState,
-    pub grid: Vec<i8>,
+/// Window size.
+pub const SIZE: Extent2<usize> = Extent2::new(640, 600);
+
+/// The assets as a 'static reference.
+pub static ASSETS: OnceLock<Assets> = OnceLock::new();
+
+/// Application state.
+struct State {
+    /// Rendered sprites.
+    sprites: Sprites,
+    /// Grid for drawing.
+    drawing_area: Grid,
+    /// Slider for X pixels value.
+    x_pixels_slider: Slider,
+    /// Slider for Y pixels value.
+    y_pixels_slider: Slider,
+    /// Button to clear the canvas.
+    clear_canvas_button: Button,
+    /// Radio button group for the brush.
+    brush_radio: Radio<4>,
+    /// Options checkbox group.
+    options_group: CheckboxGroup<3>,
+    /// Selected brush type.
+    brush: MaskValue,
+    /// Slider for edge brightness.
+    edge_brightness_slider: Slider,
+    /// Slider for color variations.
+    color_variations_slider: Slider,
+    /// Slider for brightness noise.
+    brightness_noise_slider: Slider,
+    /// Slider for saturation.
+    saturation_slider: Slider,
+    /// Flexbox grid to lay out the widgets.
+    layout: Taffy,
+    /// Root grid node.
+    root: Node,
 }
 
-struct Delegate {}
+impl State {
+    /// Construct the initial state.
+    pub fn new() -> Self {
+        let settings = crate::settings();
 
-impl AppDelegate<AppState> for Delegate {
-    fn command(
-        &mut self,
-        _ctx: &mut DelegateCtx,
-        _target: Target,
-        cmd: &Command,
-        data: &mut AppState,
-        _env: &Env,
-    ) -> bool {
-        if let Some(_) = cmd.get(NEW_FILE) {
-            // Clear the grid
-            GRID.write()
-                .unwrap()
-                .iter_mut()
-                .for_each(|p| *p = MaskValue::Empty);
+        // Define the layout
+        let mut layout = Taffy::new();
 
-            // Clear the results
-            RESULTS.write().unwrap().clear();
+        // Grid for editing the sprite shape
+        let drawing_area = Grid::new(
+            layout
+                .new_leaf(Style {
+                    justify_content: Some(AlignContent::Center),
+                    min_size: Size::from_percent(0.6, 0.5),
+                    flex_grow: 1.0,
+                    ..Default::default()
+                })
+                .unwrap(),
+            Extent2::new(settings.min_x_pixels, settings.min_y_pixels).as_(),
+        );
 
-            return true;
-        }
-        if let Some(file_info) = cmd.get(OPEN_FILE) {
-            data.file_path = Some(file_info.path().to_str().unwrap().to_string());
+        let slider_style = Style {
+            size: Size::from_points(250.0, 20.0),
+            margin: Rect {
+                left: taffy::style_helpers::points(5.0),
+                right: taffy::style_helpers::auto(),
+                top: taffy::style_helpers::auto(),
+                bottom: taffy::style_helpers::auto(),
+            },
+            ..Default::default()
+        };
+        let x_pixels_slider = Slider {
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
+            length: 100.0,
+            value_label: Some("X Pixels".to_string()),
+            min: settings.min_x_pixels,
+            max: settings.max_x_pixels,
+            steps: Some((settings.max_x_pixels - settings.min_x_pixels) / 4.0),
+            ..Default::default()
+        };
 
-            let decoded: Encoded =
-                bincode::deserialize_from(File::open(data.file_path.as_ref().unwrap()).unwrap())
-                    .expect("Could not deserialize or open file");
+        let y_pixels_slider = Slider {
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
+            length: 100.0,
+            min: settings.min_y_pixels,
+            max: settings.max_y_pixels,
+            value_label: Some("Y Pixels".to_string()),
+            steps: Some((settings.max_y_pixels - settings.min_y_pixels) / 4.0),
+            ..Default::default()
+        };
 
-            *data = decoded.state;
+        let button_style = Style {
+            size: Size::from_points(80.0, 18.0),
+            ..Default::default()
+        };
+        let clear_canvas_button = Button {
+            node: layout.new_leaf(button_style.clone()).unwrap(),
+            label: Some("Clear".to_string()),
+            ..Default::default()
+        };
 
-            return true;
-        }
-        if let Some(file_info) = cmd.get(SAVE_FILE) {
-            // Get the file path from the Save As menu if applicable
-            if let Some(file_info) = file_info {
-                data.file_path = Some(file_info.path().to_str().unwrap().to_string());
-            }
+        let brush_radio = Radio::new(
+            ["Solid", "Empty", "Body1", "Body2"],
+            Some("Brush".to_string()),
+            0,
+            layout
+                .new_leaf(Style {
+                    min_size: Size::from_points(80.0, 150.0),
+                    ..Default::default()
+                })
+                .unwrap(),
+        );
+        let brush = MaskValue::Solid;
 
-            if data.file_path == None {
-                // There's no path yet, show the popup
-                // TODO show save file popup
-                return true;
-            }
+        let options_group = CheckboxGroup::new(
+            [("Colored", true), ("Mirror X", true), ("Mirror Y", false)],
+            Some("Options".to_string()),
+            layout
+                .new_leaf(Style {
+                    min_size: Size::from_points(100.0, 120.0),
+                    ..Default::default()
+                })
+                .unwrap(),
+        );
 
-            // Save the current grid to a new file
-            bincode::serialize_into(
-                File::create(data.file_path.as_ref().unwrap()).unwrap(),
-                &Encoded {
-                    state: data.clone(),
-                    // Convert the grid to an array of i8
-                    grid: data.pixels().into_iter().map(|p| p.i8()).collect::<_>(),
+        let edge_brightness_slider = Slider {
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
+            length: 80.0,
+            value_label: Some("Edge Brightness".to_string()),
+            min: 0.0,
+            max: 100.0,
+            pos: 0.17,
+            ..Default::default()
+        };
+
+        let color_variations_slider = Slider {
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
+            length: 80.0,
+            value_label: Some("Color Variations".to_string()),
+            min: 0.0,
+            max: 100.0,
+            pos: 0.2,
+            ..Default::default()
+        };
+
+        let brightness_noise_slider = Slider {
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
+            length: 80.0,
+            value_label: Some("Brightness Noise".to_string()),
+            min: 0.0,
+            max: 100.0,
+            pos: 0.81,
+            ..Default::default()
+        };
+
+        let saturation_slider = Slider {
+            node: layout.new_leaf(slider_style.clone()).unwrap(),
+            length: 80.0,
+            value_label: Some("Saturation".to_string()),
+            min: 0.0,
+            max: 100.0,
+            pos: 0.54,
+            ..Default::default()
+        };
+
+        let sprites = Sprites {
+            offset: Vec2::new(5.0, 470.0),
+            size: Extent2::new(
+                x_pixels_slider.value() as usize,
+                y_pixels_slider.value() as usize,
+            ),
+            amount: settings.preview_requested,
+            ..Default::default()
+        };
+
+        let gap = Size {
+            width: taffy::style_helpers::points(2.0),
+            height: taffy::style_helpers::points(2.0),
+        };
+
+        let groups = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Row,
+                    justify_content: Some(AlignContent::SpaceAround),
+                    gap,
+                    ..Default::default()
                 },
+                &[options_group.node, brush_radio.node],
             )
-            .expect("Could not serialize or write to save file");
+            .unwrap();
+        let pixel_sliders = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    justify_content: Some(AlignContent::Center),
+                    margin: Rect {
+                        left: taffy::style_helpers::auto(),
+                        right: taffy::style_helpers::auto(),
+                        top: taffy::style_helpers::points(5.0),
+                        bottom: taffy::style_helpers::points(5.0),
+                    },
+                    gap,
+                    ..Default::default()
+                },
+                &[x_pixels_slider.node, y_pixels_slider.node],
+            )
+            .unwrap();
 
-            return true;
+        // Split the layout top vertical part into two horizontal parts
+        let topleft = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    gap,
+                    ..Default::default()
+                },
+                &[clear_canvas_button.node, pixel_sliders, groups],
+            )
+            .unwrap();
+
+        // Split the layout into two vertical parts
+        let top = layout
+            .new_with_children(
+                Style {
+                    min_size: Size {
+                        width: taffy::style_helpers::percent(1.0),
+                        height: taffy::style_helpers::percent(0.9),
+                    },
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Row,
+                    justify_content: Some(AlignContent::SpaceBetween),
+                    align_items: Some(AlignItems::Stretch),
+                    gap,
+                    ..Default::default()
+                },
+                &[topleft, drawing_area.node],
+            )
+            .unwrap();
+        let bottom = layout
+            .new_with_children(
+                Style {
+                    min_size: Size {
+                        width: taffy::style_helpers::percent(1.0),
+                        height: taffy::style_helpers::auto(),
+                    },
+                    gap,
+                    flex_wrap: FlexWrap::Wrap,
+                    ..Default::default()
+                },
+                &[
+                    edge_brightness_slider.node,
+                    saturation_slider.node,
+                    color_variations_slider.node,
+                    brightness_noise_slider.node,
+                ],
+            )
+            .unwrap();
+
+        // Everything together
+        let root = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    justify_content: Some(AlignContent::SpaceBetween),
+                    size: Size::from_points(SIZE.w as f32, SIZE.h as f32 - 160.0),
+                    padding: Rect::points(5.0),
+                    ..Default::default()
+                },
+                &[top, bottom],
+            )
+            .unwrap();
+
+        let mut this = Self {
+            sprites,
+            drawing_area,
+            x_pixels_slider,
+            y_pixels_slider,
+            clear_canvas_button,
+            brush_radio,
+            options_group,
+            brush,
+            edge_brightness_slider,
+            color_variations_slider,
+            brightness_noise_slider,
+            saturation_slider,
+            layout,
+            root,
+        };
+
+        this.update_layout();
+        this.generate();
+
+        this
+    }
+
+    /// Update application state and handle input.
+    pub fn update(&mut self, input: &Input) {
+        if self.x_pixels_slider.update(input) || self.y_pixels_slider.update(input) {
+            let x_pixels = self.x_pixels_slider.value();
+            let y_pixels = self.y_pixels_slider.value();
+            // Resize the drawing area
+            self.drawing_area.resize(
+                Extent2::new(x_pixels, y_pixels).as_(),
+                Extent2::new(
+                    if x_pixels == 4.0 {
+                        64
+                    } else if x_pixels < 12.0 {
+                        32
+                    } else if x_pixels < 24.0 {
+                        16
+                    } else {
+                        9
+                    },
+                    if y_pixels == 4.0 {
+                        64
+                    } else if y_pixels < 12.0 {
+                        32
+                    } else if y_pixels < 24.0 {
+                        16
+                    } else {
+                        9
+                    },
+                ),
+            );
+
+            // Resize the sprite results
+            self.sprites.resize(
+                Extent2::new(self.x_pixels_slider.value(), self.y_pixels_slider.value()).as_(),
+            );
+
+            self.generate();
+            self.update_layout();
         }
 
-        false
+        // Allow user to draw
+        if self.drawing_area.update(input, self.brush.clone()) {
+            self.generate();
+        }
+
+        if self.clear_canvas_button.update(input) {
+            self.drawing_area.clear();
+
+            self.generate();
+        }
+
+        // Update the brush according to the radio group
+        if let Some(selected) = self.brush_radio.update(input) {
+            self.brush = match selected {
+                0 => MaskValue::Solid,
+                1 => MaskValue::Empty,
+                2 => MaskValue::Body1,
+                3 => MaskValue::Body2,
+                _ => panic!(),
+            };
+        }
+
+        if self.options_group.update(input).is_some() {
+            self.generate();
+        }
+
+        if self.edge_brightness_slider.update(input)
+            || self.color_variations_slider.update(input)
+            || self.brightness_noise_slider.update(input)
+            || self.saturation_slider.update(input)
+        {
+            self.generate();
+        }
+    }
+
+    /// Render the window.
+    pub fn render(&self, canvas: &mut [u32]) {
+        self.drawing_area.render(canvas);
+        self.x_pixels_slider.render(canvas);
+        self.y_pixels_slider.render(canvas);
+        self.clear_canvas_button.render(canvas);
+        self.brush_radio.render(canvas);
+        self.options_group.render(canvas);
+        self.sprites.render(canvas);
+        self.edge_brightness_slider.render(canvas);
+        self.color_variations_slider.render(canvas);
+        self.brightness_noise_slider.render(canvas);
+        self.saturation_slider.render(canvas);
+    }
+
+    /// Update the layout.
+    pub fn update_layout(&mut self) {
+        // Compute the layout
+        self.layout
+            .compute_layout(self.root, Size::MAX_CONTENT)
+            .unwrap();
+
+        self.drawing_area.update_layout(
+            self.abs_location(self.drawing_area.node),
+            self.layout.layout(self.drawing_area.node).unwrap(),
+        );
+        self.x_pixels_slider
+            .update_layout(self.abs_location(self.x_pixels_slider.node));
+        self.y_pixels_slider
+            .update_layout(self.abs_location(self.y_pixels_slider.node));
+        self.clear_canvas_button.update_layout(
+            self.abs_location(self.clear_canvas_button.node),
+            self.layout.layout(self.clear_canvas_button.node).unwrap(),
+        );
+        self.brush_radio
+            .update_layout(self.abs_location(self.brush_radio.node));
+        self.options_group
+            .update_layout(self.abs_location(self.options_group.node));
+        self.edge_brightness_slider
+            .update_layout(self.abs_location(self.edge_brightness_slider.node));
+        self.saturation_slider
+            .update_layout(self.abs_location(self.saturation_slider.node));
+        self.color_variations_slider
+            .update_layout(self.abs_location(self.color_variations_slider.node));
+        self.brightness_noise_slider
+            .update_layout(self.abs_location(self.brightness_noise_slider.node));
+    }
+
+    /// Generate new sprites.
+    pub fn generate(&mut self) {
+        // Scale to fill the rectangle with the lowest factor
+        let area = Extent2::new(SIZE.w - 10, SIZE.h - self.sprites.offset.y as usize - 10);
+        let width = self.x_pixels_slider.value() as usize
+            * if self.options_group.checked(1) { 2 } else { 1 }
+            + 4;
+        let x_factor = area.w / width / settings().preview_requested.w;
+        let height = self.y_pixels_slider.value() as usize
+            * if self.options_group.checked(2) { 2 } else { 1 }
+            + 4;
+        let y_factor = area.h / height / settings().preview_requested.h;
+        let scale = x_factor.min(y_factor).max(2);
+
+        // Amount that can actually fit with the current size
+        let amount = Extent2::new(area.w / width / scale, area.h / height / scale);
+
+        // Redraw all sprites
+        self.sprites.generate(
+            self.drawing_area.mask(),
+            Options {
+                colored: self.options_group.checked(0),
+                mirror_x: self.options_group.checked(1),
+                mirror_y: self.options_group.checked(2),
+                edge_brightness: self.edge_brightness_slider.value() as f32 / 100.0,
+                color_variations: self.color_variations_slider.value() as f32 / 100.0,
+                brightness_noise: self.brightness_noise_slider.value() as f32 / 100.0,
+                saturation: self.saturation_slider.value() as f32 / 100.0,
+                ..Default::default()
+            },
+            amount,
+            scale,
+        );
+    }
+
+    /// Get absolute coordinates for a node.
+    ///
+    /// We have to do this recursively because taffy doesn't expose it directly.
+    pub fn abs_location(&self, mut node: Node) -> Vec2<f64> {
+        let layout = self.layout.layout(node).unwrap().location;
+        let mut coord = Vec2::new(layout.x as f64, layout.y as f64);
+
+        while let Some(parent) = self.layout.parent(node) {
+            let layout = self.layout.layout(parent).unwrap().location;
+            coord.x += layout.x as f64;
+            coord.y += layout.y as f64;
+
+            node = parent;
+        }
+
+        coord
     }
 }
 
-fn copy_to_clipboard(data: &AppState) {
-    let string = format!(
-        "let (width, height, options) = ({}, {}, {:?});\nlet data = [{}];",
-        data.width(),
-        data.height(),
-        data.options(),
-        data.pixels()
-            .into_iter()
-            .map(|p| format!("MaskValue::{:?}", p))
-            .join(", ")
-    );
-
-    let mut clipboard = Application::global().clipboard();
-    clipboard.put_string(string);
+/// Application settings loaded from a file so it's easier to change them with hot-reloading.
+#[derive(Deserialize)]
+pub struct Settings {
+    /// Minimum amount of X pixels.
+    min_x_pixels: f64,
+    /// Maximum amount of X pixels.
+    max_x_pixels: f64,
+    /// Minimum amount of Y pixels.
+    min_y_pixels: f64,
+    /// Maximum amount of Y pixels.
+    max_y_pixels: f64,
+    /// Ideal amount of preview images.
+    preview_requested: Extent2<usize>,
 }
 
-fn ui_builder() -> impl Widget<AppState> {
-    let menu_bar = {
-        Flex::row()
-            .with_child(
-                Button::new("New")
-                    .on_click(|ctx, _data, _env| ctx.submit_command(NEW_FILE, None))
-                    .padding(5.0),
-            )
-            .with_child(
-                Button::new("Open")
-                    .on_click(|ctx, _data, _env| {
-                        let dialog_options = FileDialogOptions::new();
+impl Asset for Settings {
+    const EXTENSION: &'static str = "toml";
 
-                        ctx.submit_command(
-                            Command::new(SHOW_OPEN_PANEL, dialog_options.clone()),
-                            None,
-                        )
-                    })
-                    .padding(5.0),
-            )
-            .with_child(
-                Button::new("Save")
-                    .on_click(|ctx, _data, _env| {
-                        let dialog_options = FileDialogOptions::new();
-
-                        ctx.submit_command(
-                            Command::new(SHOW_SAVE_PANEL, dialog_options.clone()),
-                            None,
-                        )
-                    })
-                    .padding(5.0),
-            )
-            .with_child(
-                Button::new("Copy to clipboard")
-                    .on_click(|_ctx, data, _env| copy_to_clipboard(data))
-                    .padding(5.0),
-            )
-    };
-
-    let edit_box = {
-        let fill_type = LensWrap::new(
-            RadioGroup::new(vec![
-                ("Solid", MaskValue::Solid.i8()),
-                ("Empty", MaskValue::Empty.i8()),
-                ("Body 1", MaskValue::Body1.i8()),
-                ("Body 2", MaskValue::Body2.i8()),
-            ]),
-            AppState::fill_type,
-        );
-
-        let size_x = Slider::new().lens(AppState::size_x);
-        let size_x_label =
-            Label::new(|data: &AppState, _env: &_| format!("X Pixels: {}", data.width()));
-        let size_y = Slider::new().lens(AppState::size_y);
-        let size_y_label =
-            Label::new(|data: &AppState, _env: &_| format!("Y Pixels: {}", data.height()));
-        let scale = Slider::new()
-            .with_range(1.0, 32.0)
-            .lens(AppState::render_scale);
-        let scale_label = Label::new(|data: &AppState, _env: &_| {
-            format!("Render Scale: {:.0}", data.render_scale)
-        });
-        let results_amount = Slider::new().lens(AppState::results_amount);
-        let results_amount_label =
-            Label::new(|data: &AppState, _env: &_| format!("Results: {}", data.results()));
-
-        let right_box = Flex::column()
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(size_x.padding(5.0), 1.0)
-                    .with_flex_child(size_x_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            )
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(size_y.padding(5.0), 1.0)
-                    .with_flex_child(size_y_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            )
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(scale.padding(5.0), 1.0)
-                    .with_flex_child(scale_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            )
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(results_amount.padding(5.0), 1.0)
-                    .with_flex_child(results_amount_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            );
-
-        Flex::row()
-            .with_flex_child(fill_type.fix_width(BOX_SIZE), 0.0)
-            .with_flex_child(right_box, 1.0)
-    };
-
-    let options_box = {
-        let colored = Checkbox::new("Colored").lens(AppState::colored);
-        let mirror_x = Checkbox::new("Mirror X").lens(AppState::mirror_x);
-        let mirror_y = Checkbox::new("Mirror Y").lens(AppState::mirror_y);
-        let left_box = Flex::column()
-            .with_flex_child(colored.padding(5.0), 0.0)
-            .with_flex_child(mirror_x.padding(5.0), 0.0)
-            .with_flex_child(mirror_y.padding(5.0), 0.0);
-
-        let edge_brightness = Slider::new().lens(AppState::edge_brightness);
-        let edge_brightness_label = Label::new(|data: &AppState, _env: &_| {
-            format!("Edge Brightness: {:.2}", data.edge_brightness)
-        });
-        let color_variations = Slider::new().lens(AppState::color_variations);
-        let color_variations_label = Label::new(|data: &AppState, _env: &_| {
-            format!("Color Variations: {:.2}", data.color_variations)
-        });
-        let brightness_noise = Slider::new().lens(AppState::brightness_noise);
-        let brightness_noise_label = Label::new(|data: &AppState, _env: &_| {
-            format!("Brightness Noise: {:.2}", data.brightness_noise)
-        });
-        let saturation = Slider::new().lens(AppState::saturation);
-        let saturation_label =
-            Label::new(|data: &AppState, _env: &_| format!("Saturation: {:.2}", data.saturation));
-        let right_box = Flex::column()
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(edge_brightness.padding(5.0), 1.0)
-                    .with_flex_child(edge_brightness_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            )
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(color_variations.padding(5.0), 1.0)
-                    .with_flex_child(color_variations_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            )
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(brightness_noise.padding(5.0), 1.0)
-                    .with_flex_child(brightness_noise_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            )
-            .with_flex_child(
-                Flex::row()
-                    .with_flex_child(saturation.padding(5.0), 1.0)
-                    .with_flex_child(saturation_label.fix_width(LABEL_SIZE), 0.0),
-                0.0,
-            );
-
-        Flex::row()
-            .with_flex_child(left_box.fix_width(BOX_SIZE), 0.0)
-            .with_flex_child(
-                // Let the color options rendering state depend on the colored boolean
-                Either::new(|data, _env| data.colored, right_box, SizedBox::empty()),
-                1.0,
-            )
-    };
-
-    Flex::column()
-        .with_child(menu_bar.padding(5.0))
-        .with_flex_child(
-            Flex::row()
-                .with_flex_child(GridWidget::new_centered().padding(20.0), 1.0)
-                .with_flex_child(
-                    Flex::column()
-                        .with_flex_child(Label::new("Edit").padding(5.0), 0.0)
-                        .with_flex_child(edit_box, 1.0)
-                        .with_flex_child(Label::new("Options").padding(5.0), 0.0)
-                        .with_flex_child(options_box, 1.0),
-                    1.0,
-                )
-                .padding(5.0),
-            1.0,
-        )
-        .with_flex_child(ResultWidget::new_centered().padding(20.0), 0.5)
+    type Loader = TomlLoader;
 }
 
-fn main() -> Result<()> {
-    let main_window = WindowDesc::new(ui_builder).title(LocalizedString::new("Sprite"));
+async fn run() -> Result<()> {
+    // Initialize the asset loader
+    let assets = ASSETS.get_or_init(Assets::load);
+    assets.enable_hot_reloading();
 
-    let data = AppState::default();
+    // Run the application window
+    window::run(
+        State::new(),
+        SIZE,
+        60,
+        |g, input| {
+            // Update the application state
+            g.update(input);
+        },
+        |g, buffer| {
+            // Clear with gray
+            buffer.fill(0xFF999999);
 
-    AppLauncher::with_window(main_window)
-        .delegate(Delegate {})
-        .use_simple_logger()
-        .launch(data)
-        .expect("Could not create main window");
+            // Draw the application
+            g.render(buffer);
+        },
+    )
+    .await?;
 
     Ok(())
+}
+
+/// Entry point starting either a WASM future or a Tokio runtime.
+fn main() {
+    #[cfg(target_arch = "wasm32")]
+    {
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        console_log::init_with_level(log::Level::Info).expect("error initializing logger");
+
+        wasm_bindgen_futures::spawn_local(async { run().await.unwrap() });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async { run().await.unwrap() });
+    }
+}
+
+/// Load the global settings.
+pub fn settings() -> AssetGuard<'static, Settings> {
+    ASSETS
+        .get()
+        .expect("Asset handling not initialized yet")
+        .settings()
+}
+
+/// Load the font.
+pub fn font() -> AssetGuard<'static, Font> {
+    ASSETS
+        .get()
+        .expect("Asset handling not initialized yet")
+        .asset("Beachball")
+}
+
+/// Load the sprite.
+pub fn sprite(path: &str) -> AssetGuard<'static, Sprite> {
+    ASSETS
+        .get()
+        .expect("Asset handling not initialized yet")
+        .asset(path)
 }
