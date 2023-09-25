@@ -19,10 +19,7 @@ use sprite_gen::{MaskValue, Options};
 use sprites::Sprites;
 use taffy::{
     prelude::{Node, Rect, Size},
-    style::{
-        AlignContent, AlignItems, AvailableSpace, Dimension, Display, FlexDirection, FlexWrap,
-        Style,
-    },
+    style::{AlignContent, AlignItems, Display, FlexDirection, FlexWrap, Style},
     style_helpers::TaffyMaxContent,
     tree::LayoutTree,
     Taffy,
@@ -157,7 +154,7 @@ impl State {
 
         let edge_brightness_slider = Slider {
             node: layout.new_leaf(slider_style.clone()).unwrap(),
-            length: 100.0,
+            length: 80.0,
             value_label: Some("Edge Brightness".to_string()),
             min: 0.0,
             max: 100.0,
@@ -167,7 +164,7 @@ impl State {
 
         let color_variations_slider = Slider {
             node: layout.new_leaf(slider_style.clone()).unwrap(),
-            length: 100.0,
+            length: 80.0,
             value_label: Some("Color Variations".to_string()),
             min: 0.0,
             max: 100.0,
@@ -177,7 +174,7 @@ impl State {
 
         let brightness_noise_slider = Slider {
             node: layout.new_leaf(slider_style.clone()).unwrap(),
-            length: 100.0,
+            length: 80.0,
             value_label: Some("Brightness Noise".to_string()),
             min: 0.0,
             max: 100.0,
@@ -187,7 +184,7 @@ impl State {
 
         let saturation_slider = Slider {
             node: layout.new_leaf(slider_style.clone()).unwrap(),
-            length: 100.0,
+            length: 80.0,
             value_label: Some("Saturation".to_string()),
             min: 0.0,
             max: 100.0,
@@ -210,28 +207,47 @@ impl State {
             height: taffy::style_helpers::points(2.0),
         };
 
+        let groups = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Row,
+                    justify_content: Some(AlignContent::SpaceAround),
+                    gap,
+                    ..Default::default()
+                },
+                &[options_group.node, brush_radio.node],
+            )
+            .unwrap();
+        let pixel_sliders = layout
+            .new_with_children(
+                Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    justify_content: Some(AlignContent::Center),
+                    margin: Rect {
+                        left: taffy::style_helpers::auto(),
+                        right: taffy::style_helpers::auto(),
+                        top: taffy::style_helpers::points(5.0),
+                        bottom: taffy::style_helpers::points(5.0),
+                    },
+                    gap,
+                    ..Default::default()
+                },
+                &[x_pixels_slider.node, y_pixels_slider.node],
+            )
+            .unwrap();
+
         // Split the layout top vertical part into two horizontal parts
         let topleft = layout
             .new_with_children(
                 Style {
                     display: Display::Flex,
-                    flex_direction: FlexDirection::Row,
-                    flex_wrap: FlexWrap::Wrap,
-                    justify_content: Some(AlignContent::SpaceAround),
+                    flex_direction: FlexDirection::Column,
                     gap,
                     ..Default::default()
                 },
-                &[
-                    clear_canvas_button.node,
-                    x_pixels_slider.node,
-                    y_pixels_slider.node,
-                    brush_radio.node,
-                    options_group.node,
-                    edge_brightness_slider.node,
-                    saturation_slider.node,
-                    color_variations_slider.node,
-                    brightness_noise_slider.node,
-                ],
+                &[clear_canvas_button.node, pixel_sliders, groups],
             )
             .unwrap();
 
@@ -241,7 +257,7 @@ impl State {
                 Style {
                     min_size: Size {
                         width: taffy::style_helpers::percent(1.0),
-                        height: taffy::style_helpers::auto(),
+                        height: taffy::style_helpers::percent(0.9),
                     },
                     display: Display::Flex,
                     flex_direction: FlexDirection::Row,
@@ -254,14 +270,23 @@ impl State {
             )
             .unwrap();
         let bottom = layout
-            .new_leaf(Style {
-                min_size: Size {
-                    width: taffy::style_helpers::percent(1.0),
-                    height: taffy::style_helpers::percent(0.3),
+            .new_with_children(
+                Style {
+                    min_size: Size {
+                        width: taffy::style_helpers::percent(1.0),
+                        height: taffy::style_helpers::auto(),
+                    },
+                    gap,
+                    flex_wrap: FlexWrap::Wrap,
+                    ..Default::default()
                 },
-                gap,
-                ..Default::default()
-            })
+                &[
+                    edge_brightness_slider.node,
+                    saturation_slider.node,
+                    color_variations_slider.node,
+                    brightness_noise_slider.node,
+                ],
+            )
             .unwrap();
 
         // Everything together
@@ -271,7 +296,7 @@ impl State {
                     display: Display::Flex,
                     flex_direction: FlexDirection::Column,
                     justify_content: Some(AlignContent::SpaceBetween),
-                    size: Size::from_points(SIZE.w as f32, SIZE.h as f32),
+                    size: Size::from_points(SIZE.w as f32, SIZE.h as f32 - 160.0),
                     padding: Rect::points(5.0),
                     ..Default::default()
                 },
@@ -422,8 +447,6 @@ impl State {
             .update_layout(self.abs_location(self.color_variations_slider.node));
         self.brightness_noise_slider
             .update_layout(self.abs_location(self.brightness_noise_slider.node));
-
-        taffy::debug::print_tree(&self.layout, self.root);
     }
 
     /// Generate new sprites.

@@ -1,5 +1,5 @@
 use blit::slice::Slice;
-use taffy::prelude::{Layout, Node};
+use taffy::prelude::Node;
 use vek::{Rect, Vec2};
 
 use crate::input::Input;
