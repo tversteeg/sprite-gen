@@ -1,6 +1,6 @@
 [package]
 name = "sprite"
-version = "0.2.5"
+version = "0.3.0"
 edition = "2021"
 authors = ["Thomas Versteeg <thomasversteeg@gmx.com>"]
 license = "GPL-3.0"
