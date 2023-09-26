@@ -35,6 +35,7 @@ vek = "0.16"
 assets_manager = { version = "0.10", features = ["embedded", "hot-reloading", "toml", "png"], default-features = false }
 serde = "1"
 taffy = "0.3"
+rfd = { version = "0.12.0", default-features = false, features = ["xdg-portal"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["macros", "sync", "rt-multi-thread"] }

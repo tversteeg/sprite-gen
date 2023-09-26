@@ -6,13 +6,14 @@ mod sprites;
 mod widgets;
 mod window;
 
-use std::sync::OnceLock;
+use std::{future::Future, sync::OnceLock};
 
 use assets::Assets;
 use assets_manager::{loader::TomlLoader, Asset, AssetGuard};
 use font::Font;
 use input::Input;
 use miette::Result;
+use rfd::AsyncFileDialog;
 use serde::Deserialize;
 use sprite::Sprite;
 use sprite_gen::{MaskValue, Options};
@@ -25,7 +26,7 @@ use taffy::{
     Taffy,
 };
 #[cfg(not(target_arch = "wasm32"))]
-use tokio::runtime::Runtime;
+use tokio::runtime::Builder;
 use vek::{Extent2, Vec2};
 use widgets::{button::Button, checkbox::CheckboxGroup, grid::Grid, radio::Radio, slider::Slider};
 
@@ -47,6 +48,8 @@ struct State {
     y_pixels_slider: Slider,
     /// Button to clear the canvas.
     clear_canvas_button: Button,
+    /// Button to save the sheet.
+    save_sheet_button: Button,
     /// Radio button group for the brush.
     brush_radio: Radio<4>,
     /// Options checkbox group.
@@ -119,7 +122,7 @@ impl State {
         };
 
         let button_style = Style {
-            size: Size::from_points(80.0, 18.0),
+            size: Size::from_points(120.0, 18.0),
             ..Default::default()
         };
         let clear_canvas_button = Button {
@@ -189,6 +192,12 @@ impl State {
             min: 0.0,
             max: 100.0,
             pos: 0.54,
+            ..Default::default()
+        };
+
+        let save_sheet_button = Button {
+            node: layout.new_leaf(button_style.clone()).unwrap(),
+            label: Some("Save Sheet".to_string()),
             ..Default::default()
         };
 
@@ -285,6 +294,7 @@ impl State {
                     saturation_slider.node,
                     color_variations_slider.node,
                     brightness_noise_slider.node,
+                    save_sheet_button.node,
                 ],
             )
             .unwrap();
@@ -296,7 +306,7 @@ impl State {
                     display: Display::Flex,
                     flex_direction: FlexDirection::Column,
                     justify_content: Some(AlignContent::SpaceBetween),
-                    size: Size::from_points(SIZE.w as f32, SIZE.h as f32 - 160.0),
+                    size: Size::from_points(SIZE.w as f32, SIZE.h as f32 - 136.0),
                     padding: Rect::points(5.0),
                     ..Default::default()
                 },
@@ -310,6 +320,7 @@ impl State {
             x_pixels_slider,
             y_pixels_slider,
             clear_canvas_button,
+            save_sheet_button,
             brush_radio,
             options_group,
             brush,
@@ -377,6 +388,21 @@ impl State {
             self.generate();
         }
 
+        // Open the dialog to save the file
+        if self.save_sheet_button.update(input) {
+            block_async(async move {
+                if let Some(file_handle) = AsyncFileDialog::new()
+                    .set_title("Save Sprite Sheet")
+                    .add_filter("image", &["png"])
+                    .set_file_name("sprites.png")
+                    .save_file()
+                    .await
+                {
+                    dbg!(file_handle);
+                }
+            });
+        }
+
         // Update the brush according to the radio group
         if let Some(selected) = self.brush_radio.update(input) {
             self.brush = match selected {
@@ -407,6 +433,7 @@ impl State {
         self.x_pixels_slider.render(canvas);
         self.y_pixels_slider.render(canvas);
         self.clear_canvas_button.render(canvas);
+        self.save_sheet_button.render(canvas);
         self.brush_radio.render(canvas);
         self.options_group.render(canvas);
         self.sprites.render(canvas);
@@ -434,6 +461,10 @@ impl State {
         self.clear_canvas_button.update_layout(
             self.abs_location(self.clear_canvas_button.node),
             self.layout.layout(self.clear_canvas_button.node).unwrap(),
+        );
+        self.save_sheet_button.update_layout(
+            self.abs_location(self.save_sheet_button.node),
+            self.layout.layout(self.save_sheet_button.node).unwrap(),
         );
         self.brush_radio
             .update_layout(self.abs_location(self.brush_radio.node));
@@ -563,9 +594,28 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let rt = Runtime::new().unwrap();
+        let rt = Builder::new_multi_thread().enable_all().build().unwrap();
         rt.block_on(async { run().await.unwrap() });
     }
+}
+
+/// Spawn an async task.
+#[cfg(target_arch = "wasm32")]
+fn block_async<T>(task: T)
+where
+    T: Future<Output = ()> + 'static,
+{
+    wasm_bindgen_futures::spawn_local(task);
+}
+
+/// Spawn an async task.
+#[cfg(not(target_arch = "wasm32"))]
+fn block_async<T>(task: T)
+where
+    T: Future + Send + 'static,
+    T::Output: Send + 'static,
+{
+    tokio::spawn(task);
 }
 
 /// Load the global settings.
