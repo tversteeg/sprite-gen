@@ -1,0 +1,24 @@
+[workspace]
+# Disable the changelog for all packages
+changelog_update = false
+
+[[package]]
+name = "sprite"
+# Use the changelog for this package
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+
+[[package]]
+name = "sprite-gen"
+# Use the changelog for this package
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+
+# Ignore run-wasm
+[[package]]
+name = "run-wasm"
+semver_check = false
+changelog_update = false
+git_tag_enable = false
+git_release_enable = false
+publish = false
