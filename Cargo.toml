@@ -29,7 +29,7 @@ pixels = "0.13"
 blit = "0.8"
 game-loop = { version = "1.0", features = ["winit"] }
 miette = { version = "5", features = ["fancy"] }
-image = { version = "0.24", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 rotsprite = "0.1"
 vek = "0.16"
 assets_manager = { version = "0.10", features = ["embedded", "hot-reloading", "toml", "png"], default-features = false }
